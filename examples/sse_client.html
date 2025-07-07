@@ -204,10 +204,7 @@
                 <label for="zipCode">Zip Code:</label>
                 <input type="text" id="zipCode" placeholder="10001" value="10001">
             </div>
-            <div>
-                <label for="alertTypes">Alert Types:</label>
-                <input type="text" id="alertTypes" placeholder="all, severe, winter" value="all">
-            </div>
+
             <div>
                 <button id="connectBtn" onclick="connect()">Connect</button>
                 <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
@@ -340,7 +337,7 @@
             
             const serverUrl = document.getElementById('serverUrl').value.trim();
             const zipCode = document.getElementById('zipCode').value;
-            const alertTypes = document.getElementById('alertTypes').value;
+            const alertTypes = "all";
             
             if (!serverUrl) {
                 log('Please enter a server URL');
@@ -478,6 +475,7 @@
             updateButtonStates(); // Initialize button states
             log('Page loaded. Ready to connect.');
             log('Example zip codes: 10001 (New York), 90210 (Beverly Hills), 33101 (Miami)');
+            log('Select alert types from dropdown - hold Ctrl/Cmd for multiple selections');
             log('Change server URL to test different ports (e.g., http://localhost:8080)');
         });
     </script>
