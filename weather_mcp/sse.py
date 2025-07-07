@@ -1,21 +1,22 @@
 """
-Server-Sent Events implementation for real-time weather updates
+Weather SSE (Server-Sent Events) implementation using National Weather Service API
 """
 
 import asyncio
 import json
 import time
-from typing import Dict, List, Set, Optional, Any
-from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
-import weakref
-from sse_starlette import EventSourceResponse
-from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
-from fastapi.responses import JSONResponse
+from typing import Dict, Set, List, Optional
+from dataclasses import dataclass
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from .config import Config
-from .accuweather import AccuWeatherClient, WeatherAlert
+from .nws import NationalWeatherServiceClient, WeatherAlert
 
 
 @dataclass
@@ -37,7 +38,7 @@ class SSEConnection:
 class WeatherSSEManager:
     """Manages SSE connections for weather updates"""
     
-    def __init__(self, config: Config, weather_client: AccuWeatherClient):
+    def __init__(self, config: Config, weather_client: NationalWeatherServiceClient):
         self.config = config
         self.weather_client = weather_client
         self.connections: Dict[str, SSEConnection] = {}
@@ -79,24 +80,24 @@ class WeatherSSEManager:
         logger.info("Weather SSE Manager stopped")
     
     async def _zip_to_location_key(self, zip_code: str) -> tuple[str, str]:
-        """Convert zip code to AccuWeather location key and name"""
+        """Convert zip code to location key and name using NWS geocoding"""
         try:
-            # Don't use context manager here - we need the client to stay open
+            # Use NWS client to search for location
             locations = await self.weather_client.search_locations(zip_code)
-            if not locations:
-                raise ValueError(f"No location found for zip code: {zip_code}")
             
-            # Use the first (most relevant) result
+            if not locations:
+                raise ValueError(f"No location found for zip code {zip_code}")
+            
             location = locations[0]
-            location_key = location["Key"]
-            location_name = f"{location['LocalizedName']}, {location['AdministrativeArea']['LocalizedName']}"
+            location_key = location["Key"]  # This will be "lat,lon" format
+            location_name = location["LocalizedName"]
             
             logger.info(f"Converted zip code {zip_code} to location: {location_name} (Key: {location_key})")
             return location_key, location_name
             
         except Exception as e:
-            logger.error(f"Error converting zip code {zip_code}: {e}")
-            raise ValueError(f"Invalid zip code: {zip_code}")
+            logger.error(f"Error converting zip code {zip_code} to location: {e}")
+            raise
 
     def add_connection(self, connection_id: str, location_key: str, zip_code: str = "", location_name: str = "", alert_types: Set[str] = None) -> SSEConnection:
         """Add a new SSE connection"""
@@ -263,7 +264,7 @@ class WeatherSSEManager:
         async def event_generator():
             # Send immediate weather update on connection
             try:
-                # Get current weather immediately (don't use context manager)
+                # Get current weather immediately
                 weather = await self.weather_client.get_current_weather(location_key)
                 
                 # Update heartbeat
@@ -292,22 +293,91 @@ class WeatherSSEManager:
                     }
                 }
                 
-                yield {
-                    "event": "weather_update",
-                    "data": json.dumps(weather_data)
-                }
+                # Send weather update in SSE format
+                yield f"event: weather_update\ndata: {json.dumps(weather_data)}\n\n"
                 
                 logger.info(f"Sent initial weather data to connection {connection_id}")
                 
+                # Check for current alerts immediately
+                try:
+                    current_alerts = await self.weather_client.get_weather_alerts(location_key)
+                    if current_alerts:
+                        # Filter alerts based on connection's alert types
+                        filtered_alerts = []
+                        for alert in current_alerts:
+                            if "all" in connection.alert_types or alert.category.lower() in connection.alert_types:
+                                filtered_alerts.append(alert)
+                        
+                        if filtered_alerts:
+                            alert_data = {
+                                "type": "weather_alert",
+                                "location_key": location_key,
+                                "zip_code": connection.zip_code,
+                                "location_name": connection.location_name,
+                                "timestamp": datetime.now().isoformat(),
+                                "alerts": [
+                                    {
+                                        "alert_id": alert.alert_id,
+                                        "title": alert.title,
+                                        "description": alert.description,
+                                        "severity": alert.severity,
+                                        "category": alert.category,
+                                        "start_time": alert.start_time.isoformat(),
+                                        "end_time": alert.end_time.isoformat() if alert.end_time else None,
+                                        "areas": alert.areas
+                                    }
+                                    for alert in filtered_alerts
+                                ]
+                            }
+                            
+                            yield f"event: weather_alert\ndata: {json.dumps(alert_data)}\n\n"
+                            
+                            logger.info(f"Sent {len(filtered_alerts)} immediate alerts to connection {connection_id}")
+                            
+                            # Send status update about successful alert retrieval
+                            alert_success = {
+                                "type": "alert_status",
+                                "location_key": location_key,
+                                "zip_code": connection.zip_code,
+                                "location_name": connection.location_name,
+                                "timestamp": datetime.now().isoformat(),
+                                "message": f"Successfully retrieved {len(filtered_alerts)} weather alerts from National Weather Service",
+                                "status": "success"
+                            }
+                            
+                            yield f"event: alert_status\ndata: {json.dumps(alert_success)}\n\n"
+                        
+                        # Cache the alerts
+                        self.alert_cache[location_key] = current_alerts
+                        
+                except Exception as e:
+                    # Handle any alert errors gracefully
+                    logger.warning(f"Could not check alerts for {location_key}: {e}")
+                    
+                    # Send info about no alerts available
+                    alert_info = {
+                        "type": "alert_status",
+                        "location_key": location_key,
+                        "zip_code": connection.zip_code,
+                        "location_name": connection.location_name,
+                        "timestamp": datetime.now().isoformat(),
+                        "message": f"No weather alerts available for this location",
+                        "status": "info"
+                    }
+                    
+                    yield f"event: alert_status\ndata: {json.dumps(alert_info)}\n\n"
+                
             except Exception as e:
                 logger.error(f"Error sending initial weather data to {connection_id}: {e}")
-                yield {
-                    "event": "error",
-                    "data": json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+                error_data = {
+                    "error": str(e),
+                    "timestamp": datetime.now().isoformat()
                 }
+                yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
             
             # Continue with periodic updates
             last_weather_update = datetime.now()
+            last_alert_check = datetime.now()
             
             while self.running and connection_id in self.connections:
                 try:
@@ -320,17 +390,71 @@ class WeatherSSEManager:
                         "connection_id": connection_id
                     }
                     
-                    yield {
-                        "event": "heartbeat",
-                        "data": json.dumps(heartbeat_data)
-                    }
+                    yield f"event: heartbeat\ndata: {json.dumps(heartbeat_data)}\n\n"
                     
                     # Update heartbeat timestamp
                     self.update_heartbeat(connection_id)
                     
+                    # Check for new alerts every 60 seconds
+                    if (current_time - last_alert_check).total_seconds() >= 60:
+                        try:
+                            current_alerts = await self.weather_client.get_weather_alerts(location_key)
+                            cached_alerts = self.alert_cache.get(location_key, [])
+                            
+                            # Find new alerts
+                            new_alerts = []
+                            cached_alert_ids = {alert.alert_id for alert in cached_alerts}
+                            
+                            for alert in current_alerts:
+                                if alert.alert_id not in cached_alert_ids:
+                                    new_alerts.append(alert)
+                            
+                            # Update cache
+                            self.alert_cache[location_key] = current_alerts
+                            
+                            # Send new alerts
+                            if new_alerts:
+                                # Filter alerts based on connection's alert types
+                                filtered_alerts = []
+                                for alert in new_alerts:
+                                    if "all" in connection.alert_types or alert.category.lower() in connection.alert_types:
+                                        filtered_alerts.append(alert)
+                                
+                                if filtered_alerts:
+                                    alert_data = {
+                                        "type": "weather_alert",
+                                        "location_key": location_key,
+                                        "zip_code": connection.zip_code,
+                                        "location_name": connection.location_name,
+                                        "timestamp": current_time.isoformat(),
+                                        "alerts": [
+                                            {
+                                                "alert_id": alert.alert_id,
+                                                "title": alert.title,
+                                                "description": alert.description,
+                                                "severity": alert.severity,
+                                                "category": alert.category,
+                                                "start_time": alert.start_time.isoformat(),
+                                                "end_time": alert.end_time.isoformat() if alert.end_time else None,
+                                                "areas": alert.areas
+                                            }
+                                            for alert in filtered_alerts
+                                        ]
+                                    }
+                                    
+                                    yield f"event: weather_alert\ndata: {json.dumps(alert_data)}\n\n"
+                                    
+                                    logger.info(f"Sent {len(filtered_alerts)} new alerts to connection {connection_id}")
+                            
+                            last_alert_check = current_time
+                            
+                        except Exception as e:
+                            logger.warning(f"Could not check for new alerts: {e}")
+                            last_alert_check = current_time
+                    
                     # Send weather update every 2 minutes
                     if (current_time - last_weather_update).total_seconds() >= 120:
-                        # Get current weather (don't use context manager)
+                        # Get current weather
                         weather = await self.weather_client.get_current_weather(location_key)
                         
                         # Prepare weather data with location info
@@ -356,10 +480,7 @@ class WeatherSSEManager:
                             }
                         }
                         
-                        yield {
-                            "event": "weather_update",
-                            "data": json.dumps(weather_data)
-                        }
+                        yield f"event: weather_update\ndata: {json.dumps(weather_data)}\n\n"
                         
                         last_weather_update = current_time
                         logger.debug(f"Sent weather update to connection {connection_id}")
@@ -371,13 +492,13 @@ class WeatherSSEManager:
                     break
                 except Exception as e:
                     logger.error(f"Error in weather stream for {connection_id}: {e}")
-                    yield {
-                        "event": "error",
-                        "data": json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+                    error_data = {
+                        "error": str(e),
+                        "timestamp": datetime.now().isoformat()
                     }
-                    await asyncio.sleep(30)  # Wait before retrying
+                    yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+                    break
             
-            # Cleanup connection
             logger.info(f"SSE stream ending for connection {connection_id}")
             self.remove_connection(connection_id)
         
@@ -387,14 +508,13 @@ class WeatherSSEManager:
 class WeatherSSEApp:
     """FastAPI application for weather SSE endpoints"""
     
-    def __init__(self, config: Config, weather_client: AccuWeatherClient):
+    def __init__(self, config: Config, weather_client: NationalWeatherServiceClient):
         self.config = config
         self.weather_client = weather_client
         self.sse_manager = WeatherSSEManager(config, weather_client)
         self.app = FastAPI(title="Clima MCP SSE Server", version="0.1.0")
         
         # Add CORS middleware for browser compatibility
-        from fastapi.middleware.cors import CORSMiddleware
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -451,7 +571,7 @@ class WeatherSSEApp:
                 # Create event generator
                 event_generator = await self.sse_manager.get_current_weather_stream(location_key, connection_id)
                 
-                return EventSourceResponse(event_generator)
+                return StreamingResponse(event_generator, media_type="text/event-stream")
                 
             except ValueError as e:
                 logger.error(f"Invalid zip code {zip_code}: {e}")

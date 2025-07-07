@@ -1,11 +1,12 @@
 """
-Clima MCP - AccuWeather API wrapper with MCP server and SSE support
+Weather MCP - National Weather Service Edition
+Free weather data and alerts using NWS API
 """
 
-__version__ = "0.1.0"
-__author__ = "Climate MCP Team"
+__version__ = "1.0.0"
+__author__ = "Weather MCP Team"
 
-from .server import create_server, mcp
 from .config import Config
+from .nws import NationalWeatherServiceClient
 
-__all__ = ["create_server", "mcp", "Config"] 
+__all__ = ["Config", "NationalWeatherServiceClient"] 
