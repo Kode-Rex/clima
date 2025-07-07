@@ -1,30 +1,16 @@
 # Weather MCP - National Weather Service Edition
 
-A comprehensive Model Context Protocol (MCP) server that provides **completely free** weather data using the National Weather Service API. No API keys required!
-
-## 🌟 Why This is Better
-
-**Before (AccuWeather)**:
-- ❌ API key required
-- ❌ Rate limits on free tier
-- ❌ Weather alerts cost $25/month
-- ❌ Full alerts cost $250/month
-
-**Now (National Weather Service)**:
-- ✅ **Completely FREE** 
-- ✅ **No API key needed**
-- ✅ **Free weather alerts**
-- ✅ **US Government data** (reliable!)
-- ✅ **No rate limits**
+A comprehensive Model Context Protocol (MCP) server that provides **completely free** weather data using the National Weather Service API. Built with FastMCP for modern AI assistant integration.
 
 ## Features
 
+- **Zero Cost**: Completely free weather data from the US Government
+- **No API Keys**: No registration or authentication required
 - **FastMCP Integration**: Modern MCP server using FastMCP framework
-- **National Weather Service API**: Free, reliable US government weather data
+- **National Weather Service API**: Reliable, official US government weather data
 - **Real-time Updates**: SSE support for live weather data streams
 - **Weather Alerts**: Free real-time weather alerts and warnings
 - **Comprehensive Coverage**: Current weather, forecasts, and alerts
-- **Zero Configuration**: No API keys or registration required
 - **Multiple Modes**: Run as MCP server or standalone SSE server
 
 ## Installation
@@ -79,7 +65,7 @@ Then visit: http://localhost:8000/examples/sse_client.html
 
 ## MCP Tools
 
-The server provides 8 weather tools:
+The server provides 8 comprehensive weather tools:
 
 ### Location Tools
 
@@ -94,7 +80,7 @@ The server provides 8 weather tools:
 
 ### Alert Tools
 
-- **`get_weather_alerts`**: Get active weather alerts (FREE!)
+- **`get_weather_alerts`**: Get active weather alerts (completely free!)
 - **`get_location_alerts`**: Get alerts by searching for a location first
 
 ## SSE Endpoints
@@ -119,9 +105,9 @@ curl -N http://localhost:8000/weather/stream/90210?alert_types=severe,tornado
 **Features**:
 - Real-time weather updates every 2 minutes
 - Immediate weather data on connection
-- Free weather alerts
+- Free weather alerts from National Weather Service
 - Heartbeat every 30 seconds
-- Zip code to coordinates conversion
+- Automatic zip code to coordinates conversion
 
 ### Server Status
 
@@ -170,22 +156,11 @@ eventSource.addEventListener('weather_alert', function(event) {
 
 ## Coverage Area
 
-The National Weather Service covers:
-- 🇺🇸 **United States** (all states and territories)
+The National Weather Service provides comprehensive coverage for:
+- 🇺🇸 **United States** (all 50 states and territories)
 - **ZIP codes** supported for easy location lookup
 - **Coordinates** for precise location targeting
-
-## Comparison with AccuWeather
-
-| Feature | AccuWeather | National Weather Service |
-|---------|-------------|--------------------------|
-| API Key | Required | ❌ **None needed** |
-| Cost | Free tier limited | ✅ **Completely free** |
-| Weather Alerts | $25-250/month | ✅ **Free** |
-| Rate Limits | Yes | ✅ **None** |
-| Coverage | Global | US (comprehensive) |
-| Data Source | Commercial | ✅ **US Government** |
-| Reliability | Good | ✅ **Excellent** |
+- **Puerto Rico, US Virgin Islands, Guam** and other US territories
 
 ## Architecture
 
@@ -200,6 +175,64 @@ main.py (FastMCP server)
 └── tests/ (Complete test suite)
 ```
 
+## Technical Details
+
+### Data Sources
+
+- **Current Weather**: NWS observation stations
+- **Forecasts**: NWS gridded forecast data
+- **Alerts**: NWS weather alerts and warnings
+- **Location Data**: OpenStreetMap Nominatim geocoding
+
+### Performance
+
+- **No Rate Limits**: Government API with no request restrictions
+- **Caching**: Built-in caching for optimal performance
+- **Async**: Full async/await support for concurrent requests
+- **Real-time**: SSE streaming for live updates
+
+### Reliability
+
+- **Government Source**: Official US National Weather Service data
+- **High Availability**: Government-maintained infrastructure
+- **No API Keys**: No authentication failures or key expiration
+- **Comprehensive Error Handling**: Graceful degradation on failures
+
+## Configuration
+
+The server can be configured through environment variables or a `.env` file:
+
+```bash
+# Server Configuration
+HOST=localhost
+PORT=8000
+DEBUG=false
+LOG_LEVEL=INFO
+
+# SSE Configuration
+SSE_HEARTBEAT_INTERVAL=30
+SSE_MAX_CONNECTIONS=100
+SSE_CONNECTION_TIMEOUT=300
+
+# Cache Configuration
+CACHE_TTL_SECONDS=300
+CACHE_MAX_SIZE=1000
+```
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+python run_tests.py
+```
+
+**Test Coverage**:
+- Unit tests for all weather tools
+- Integration tests for SSE server
+- Configuration validation tests
+- Mock API responses for CI/CD
+
 ## Contributing
 
 1. Fork the repository
@@ -212,11 +245,16 @@ main.py (FastMCP server)
 
 MIT License - see LICENSE file for details.
 
-## Migration from AccuWeather
+## Support
 
-If you were using the AccuWeather version:
+For issues and questions:
+- Review the [National Weather Service API documentation](https://www.weather.gov/documentation/services-web-api)
+- Check the [Model Context Protocol specification](https://modelcontextprotocol.io/)
+- Open an issue in this repository
 
-1. **Remove** your `.env` file (no API keys needed!)
-2. **Update** location keys (now use lat,lon format)
-3. **Test** with `python main.py test`
-4. **Enjoy** free weather alerts! 🎉
+## Acknowledgments
+
+- [National Weather Service](https://www.weather.gov/) for providing free, reliable weather data
+- [Model Context Protocol](https://modelcontextprotocol.io/) for the protocol specification
+- [FastMCP](https://github.com/jlowin/fastmcp) for the modern MCP framework
+- [OpenStreetMap](https://www.openstreetmap.org/) for geocoding services

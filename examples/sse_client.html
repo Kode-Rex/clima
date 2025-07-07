@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clima MCP SSE Demo</title>
+    <title>Clima Demo</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -38,7 +38,7 @@
         }
         label {
             display: inline-block;
-            width: 100px;
+            width: 120px;
             margin-right: 10px;
         }
         .controls {
@@ -56,12 +56,41 @@
         button:hover {
             background-color: #0056b3;
         }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        button:disabled:hover {
+            background-color: #6c757d;
+        }
         #status {
             padding: 10px;
             margin: 10px 0;
             border-radius: 4px;
             font-weight: bold;
             text-align: center;
+            transition: all 0.3s ease;
+        }
+        .status-connected {
+            background-color: #28a745;
+            color: white;
+            border: 2px solid #1e7e34;
+        }
+        .status-disconnected {
+            background-color: #dc3545;
+            color: white;
+            border: 2px solid #c82333;
+        }
+        .status-connecting {
+            background-color: #ffc107;
+            color: #212529;
+            border: 2px solid #e0a800;
+        }
+        .status-error {
+            background-color: #fd7e14;
+            color: white;
+            border: 2px solid #e8590c;
         }
         .weather-info {
             background-color: #f8f9fa;
@@ -164,9 +193,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Weather MCP SSE Client</h1>
+        <h1>🌤️ Clima Demo</h1>
         
         <div class="controls">
+            <div>
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" placeholder="http://localhost:8000" value="http://localhost:8000">
+            </div>
             <div>
                 <label for="zipCode">Zip Code:</label>
                 <input type="text" id="zipCode" placeholder="10001" value="10001">
@@ -176,12 +209,12 @@
                 <input type="text" id="alertTypes" placeholder="all, severe, winter" value="all">
             </div>
             <div>
-                <button onclick="connect()">Connect</button>
-                <button onclick="disconnect()">Disconnect</button>
+                <button id="connectBtn" onclick="connect()">Connect</button>
+                <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
             </div>
         </div>
         
-        <div id="status">Status: Not connected</div>
+        <div id="status" class="status-connecting">Status: Not connected</div>
         
         <div id="weather-container">
             <h2>Current Weather</h2>
@@ -210,8 +243,41 @@
             logElement.scrollTop = logElement.scrollHeight;
         }
         
+
+        
         function updateStatus(status) {
-            document.getElementById('status').textContent = `Status: ${status}`;
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = `Status: ${status}`;
+            
+            // Remove all status classes
+            statusElement.className = '';
+            
+            // Add appropriate class based on status
+            if (status.includes('Connected')) {
+                statusElement.classList.add('status-connected');
+            } else if (status.includes('Connecting') || status.includes('Not connected')) {
+                statusElement.classList.add('status-connecting');
+            } else if (status.includes('Error')) {
+                statusElement.classList.add('status-error');
+            } else if (status.includes('Disconnected')) {
+                statusElement.classList.add('status-disconnected');
+            }
+            
+            // Update button states
+            updateButtonStates();
+        }
+        
+        function updateButtonStates() {
+            const connectButton = document.getElementById('connectBtn');
+            const disconnectButton = document.getElementById('disconnectBtn');
+            
+            if (isConnected) {
+                connectButton.disabled = true;
+                disconnectButton.disabled = false;
+            } else {
+                connectButton.disabled = false;
+                disconnectButton.disabled = true;
+            }
         }
         
         function updateWeatherData(data) {
@@ -272,15 +338,20 @@
                 return;
             }
             
+            const serverUrl = document.getElementById('serverUrl').value.trim();
             const zipCode = document.getElementById('zipCode').value;
             const alertTypes = document.getElementById('alertTypes').value;
+            
+            if (!serverUrl) {
+                log('Please enter a server URL');
+                return;
+            }
             
             if (!zipCode) {
                 log('Please enter a zip code');
                 return;
             }
             
-            const serverUrl = 'http://localhost:8000';
             const url = `${serverUrl}/weather/stream/${zipCode}?alert_types=${encodeURIComponent(alertTypes)}`;
             
             log(`Connecting to ${url}`);
@@ -403,8 +474,11 @@
         
         // Auto-connect on page load for demo
         window.addEventListener('load', function() {
+            updateStatus('Not connected');
+            updateButtonStates(); // Initialize button states
             log('Page loaded. Ready to connect.');
             log('Example zip codes: 10001 (New York), 90210 (Beverly Hills), 33101 (Miami)');
+            log('Change server URL to test different ports (e.g., http://localhost:8080)');
         });
     </script>
 </body>
