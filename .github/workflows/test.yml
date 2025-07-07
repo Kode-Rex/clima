@@ -1,0 +1,82 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run unit tests
+      run: |
+        python run_tests.py --type unit --coverage --verbose
+      env:
+        ACCUWEATHER_API_KEY: mock_test_key_for_ci
+    
+    - name: Run integration tests
+      run: |
+        python run_tests.py --type integration --verbose
+      env:
+        ACCUWEATHER_API_KEY: mock_test_key_for_ci
+    
+    - name: Upload coverage reports to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install linting dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+        pip install -r requirements.txt
+    
+    - name: Run flake8
+      run: |
+        flake8 weather_mcp/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 weather_mcp/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+    
+    - name: Check black formatting
+      run: |
+        black --check weather_mcp/ tests/
+    
+    - name: Check import sorting
+      run: |
+        isort --check-only weather_mcp/ tests/
+    
+    - name: Run mypy type checking
+      run: |
+        mypy weather_mcp/ --ignore-missing-imports 

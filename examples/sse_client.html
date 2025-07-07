@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima MCP SSE Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .weather-data {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            border-left: 4px solid #007acc;
+        }
+        .alert {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .error {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+        }
+        .status {
+            font-weight: bold;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005fa3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Clima MCP SSE Demo</h1>
+        
+        <div class="controls">
+            <h3>Connection Settings</h3>
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+            
+            <label for="zipCode">Zip Code:</label>
+            <input type="text" id="zipCode" value="10001" placeholder="10001 (New York)">
+            
+            <label for="alertTypes">Alert Types:</label>
+            <input type="text" id="alertTypes" value="all" placeholder="all, severe, tornado, etc.">
+            
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div id="weatherData"></div>
+        <div id="alerts"></div>
+        <div id="errors"></div>
+
+        <h3>Event Log</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let isConnected = false;
+
+        function updateStatus(status, className) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = status;
+            statusEl.className = `status ${className}`;
+        }
+
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${timestamp}] ${message}<br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function displayWeather(data) {
+            const weatherEl = document.getElementById('weatherData');
+            const weather = data.weather;
+            
+            weatherEl.innerHTML = `
+                <div class="weather-data">
+                    <h3>Current Weather for ${data.location_name || data.zip_code}</h3>
+                    <p><strong>Location:</strong> ${data.location_name} (${data.zip_code})</p>
+                    <p><strong>Temperature:</strong> ${weather.temperature}°${weather.temperature_unit}</p>
+                    <p><strong>Conditions:</strong> ${weather.weather_text}</p>
+                    <p><strong>Humidity:</strong> ${weather.humidity}%</p>
+                    <p><strong>Wind:</strong> ${weather.wind_speed} km/h ${weather.wind_direction}</p>
+                    <p><strong>Pressure:</strong> ${weather.pressure} hPa</p>
+                    <p><strong>UV Index:</strong> ${weather.uv_index}</p>
+                    <p><strong>Visibility:</strong> ${weather.visibility} km</p>
+                    <p><strong>Last Updated:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                </div>
+            `;
+        }
+
+        function displayAlert(data) {
+            const alertsEl = document.getElementById('alerts');
+            
+            const alertsHtml = data.alerts.map(alert => `
+                <div class="alert">
+                    <h4>⚠️ ${alert.title}</h4>
+                    <p><strong>Severity:</strong> ${alert.severity}</p>
+                    <p><strong>Category:</strong> ${alert.category}</p>
+                    <p><strong>Description:</strong> ${alert.description}</p>
+                    <p><strong>Start:</strong> ${new Date(alert.start_time).toLocaleString()}</p>
+                    ${alert.end_time ? `<p><strong>End:</strong> ${new Date(alert.end_time).toLocaleString()}</p>` : ''}
+                    <p><strong>Areas:</strong> ${alert.areas.join(', ')}</p>
+                </div>
+            `).join('');
+            
+            alertsEl.innerHTML = alertsHtml;
+        }
+
+        function displayError(message) {
+            const errorsEl = document.getElementById('errors');
+            errorsEl.innerHTML = `
+                <div class="error">
+                    <h4>❌ Error</h4>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function connect() {
+            if (isConnected) return;
+
+            const serverUrl = document.getElementById('serverUrl').value;
+            const zipCode = document.getElementById('zipCode').value;
+            const alertTypes = document.getElementById('alertTypes').value;
+
+            if (!serverUrl || !zipCode) {
+                displayError('Please provide server URL and zip code');
+                return;
+            }
+
+            updateStatus('Connecting...', 'connecting');
+            log('Attempting to connect...');
+
+            const url = `${serverUrl}/weather/stream/${zipCode}?alert_types=${alertTypes}`;
+            eventSource = new EventSource(url);
+
+            eventSource.onopen = function(event) {
+                isConnected = true;
+                updateStatus('Connected', 'connected');
+                log('Connected to SSE stream');
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            };
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Received ${data.type} event`);
+                    
+                    if (data.type === 'current_weather') {
+                        displayWeather(data);
+                    } else if (data.type === 'weather_alert') {
+                        displayAlert(data);
+                    } else if (data.type === 'heartbeat') {
+                        log(`Heartbeat received for connection ${data.connection_id || 'unknown'}`);
+                        // Clear any error messages on successful heartbeat
+                        document.getElementById('errors').innerHTML = '';
+                    }
+                } catch (e) {
+                    log(`Error parsing message: ${e.message}`);
+                }
+            };
+
+            // Handle specific event types
+            eventSource.addEventListener('weather_update', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Weather update for ${data.location_name || data.zip_code}`);
+                    displayWeather(data);
+                } catch (e) {
+                    log(`Error parsing weather update: ${e.message}`);
+                }
+            });
+
+            eventSource.addEventListener('heartbeat', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Heartbeat: Connection active`);
+                    // Update status to show connection is healthy
+                    if (isConnected) {
+                        updateStatus('Connected (Active)', 'connected');
+                    }
+                } catch (e) {
+                    log(`Error parsing heartbeat: ${e.message}`);
+                }
+            });
+
+            eventSource.addEventListener('error', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Server error: ${data.error}`);
+                    displayError(data.error);
+                } catch (e) {
+                    log(`SSE error event - ReadyState: ${eventSource.readyState}, URL: ${eventSource.url}`);
+                    log(`Error details: ${JSON.stringify({
+                        type: event.type,
+                        target: event.target ? 'EventSource' : 'unknown',
+                        readyState: eventSource.readyState,
+                        url: eventSource.url
+                    })}`);
+                }
+            });
+
+            eventSource.onerror = function(event) {
+                log(`SSE connection error - ReadyState: ${eventSource.readyState}`);
+                
+                // Log detailed error information
+                const errorInfo = {
+                    readyState: eventSource.readyState,
+                    url: eventSource.url,
+                    eventType: event.type
+                };
+                log(`Error details: ${JSON.stringify(errorInfo)}`);
+                
+                if (isConnected) {
+                    updateStatus('Connection Error', 'disconnected');
+                    displayError('Connection lost. Please try reconnecting.');
+                } else {
+                    updateStatus('Connection Failed', 'disconnected');
+                    displayError('Failed to connect to server. Check URL and try again.');
+                }
+                
+                isConnected = false;
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+            };
+        }
+
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            isConnected = false;
+            updateStatus('Disconnected', 'disconnected');
+            log('Disconnected from SSE stream');
+            
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            
+            // Clear displays
+            document.getElementById('weatherData').innerHTML = '';
+            document.getElementById('alerts').innerHTML = '';
+            document.getElementById('errors').innerHTML = '';
+        }
+
+        // Auto-connect on page load for demo purposes
+        window.addEventListener('load', function() {
+            log('Page loaded. Enter a zip code and click Connect to start receiving weather updates.');
+            log('Example zip codes: 10001 (NYC), 90210 (Beverly Hills), 60601 (Chicago), 33101 (Miami)');
+        });
+    </script>
+</body>
+</html> 
