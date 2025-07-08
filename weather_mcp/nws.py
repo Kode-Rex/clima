@@ -58,6 +58,72 @@ class WeatherForecast:
 
 
 @dataclass
+class HourlyForecast:
+    """Hourly weather forecast information"""
+
+    timestamp: datetime
+    temperature: float
+    temperature_unit: str
+    humidity: int
+    wind_speed: float
+    wind_direction: str
+    wind_gust: float
+    pressure: float
+    visibility: float
+    precipitation_probability: int
+    precipitation_amount: float
+    weather_text: str
+    weather_icon: int
+    sky_cover: int
+    dewpoint: float
+    apparent_temperature: float
+    uv_index: int
+    is_daytime: bool
+
+
+@dataclass
+class DetailedGridData:
+    """Detailed grid forecast data with comprehensive weather parameters"""
+
+    timestamp: datetime
+    temperature: float
+    dewpoint: float
+    max_temperature: float
+    min_temperature: float
+    relative_humidity: int
+    apparent_temperature: float
+    heat_index: float
+    wind_chill: float
+    sky_cover: int
+    wind_direction: float
+    wind_speed: float
+    wind_gust: float
+    weather_conditions: List[str]
+    probability_of_precipitation: int
+    quantitative_precipitation: float
+    ice_accumulation: float
+    snowfall_amount: float
+    snow_level: float
+    ceiling_height: float
+    visibility: float
+    transport_wind_speed: float
+    transport_wind_direction: float
+    mixing_height: float
+    haines_index: float
+    lightning_activity_level: int
+    twenty_foot_wind_speed: float
+    twenty_foot_wind_direction: float
+    wave_height: float
+    wave_period: float
+    wave_direction: float
+    pressure: float
+    temperature_unit: str
+    distance_unit: str
+    speed_unit: str
+    precipitation_unit: str
+
+
+@dataclass
 class WeatherAlert:
     """Weather alert information"""
 
@@ -324,10 +390,10 @@ class NationalWeatherServiceClient:
             logger.error(f"Error getting current weather for {location_key}: {e}")
             raise
 
-    async def get_5day_forecast(
-        self, location_key: str, metric: bool = True
+    async def get_daily_forecast(
+        self, location_key: str, days: int = 5, metric: bool = True
     ) -> List[WeatherForecast]:
-        """Get 5-day weather forecast"""
+        """Get daily weather forecast for specified number of days (up to 7)"""
         try:
             # Parse location key as lat,lon
             lat, lon = map(float, location_key.split(","))
@@ -432,14 +498,294 @@ class NationalWeatherServiceClient:
                 )
                 forecasts.append(forecast)
 
-                # Limit to 5 days
-                if len(forecasts) >= 5:
+                # Limit to requested number of days
+                if len(forecasts) >= days:
                     break
 
             return forecasts
 
         except Exception as e:
             logger.error(f"Error getting forecast for {location_key}: {e}")
+            raise
+
+    async def get_5day_forecast(
+        self, location_key: str, metric: bool = True
+    ) -> List[WeatherForecast]:
+        """Get 5-day weather forecast (backward compatibility)"""
+        return await self.get_daily_forecast(location_key, days=5, metric=metric)
+
+    async def get_7day_forecast(
+        self, location_key: str, metric: bool = True
+    ) -> List[WeatherForecast]:
+        """Get 7-day weather forecast"""
+        return await self.get_daily_forecast(location_key, days=7, metric=metric)
+
+    async def get_hourly_forecast(
+        self, location_key: str, hours: int = 168, metric: bool = True
+    ) -> List[HourlyForecast]:
+        """Get hourly weather forecast for specified number of hours (up to 168 hours/7 days)"""
+        try:
+            # Parse location key as lat,lon
+            lat, lon = map(float, location_key.split(","))
+
+            # Get grid point information
+            grid_data = await self._get_grid_point(lat, lon)
+
+            # Get hourly forecast URL
+            hourly_forecast_url = grid_data.get("forecastHourly")
+            if not hourly_forecast_url:
+                raise ValueError("No hourly forecast data available for location")
+
+            # Get the hourly forecast
+            response = await self.client.get(hourly_forecast_url)
+            response.raise_for_status()
+
+            forecast_data = response.json()
+            properties = forecast_data.get("properties", {})
+            periods = properties.get("periods", [])
+
+            if not periods:
+                raise ValueError("No hourly forecast periods available")
+
+            forecasts = []
+            temp_unit = "C" if metric else "F"
+
+            # Process hourly periods
+            for period in periods[:hours]:  # Limit to requested hours
+                timestamp = datetime.fromisoformat(
+                    period["startTime"].replace("Z", "+00:00")
+                )
+                
+                # Get temperature
+                temp = period.get("temperature", 0)
+                if metric:
+                    temp = (temp - 32) * 5 / 9
+
+                # Get other weather parameters
+                humidity = period.get("relativeHumidity", {}).get("value", 0) or 0
+                wind_speed = period.get("windSpeed", "0 mph")
+                wind_direction = period.get("windDirection", "Unknown")
+                wind_gust_str = period.get("windGust", "0 mph")
+                
+                # Parse wind speed and gusts
+                try:
+                    wind_speed_val = float(wind_speed.split()[0]) if wind_speed else 0
+                    wind_gust_val = float(wind_gust_str.split()[0]) if wind_gust_str else 0
+                except (ValueError, IndexError):
+                    wind_speed_val = 0
+                    wind_gust_val = 0
+
+                # Convert wind speed to metric if requested
+                if metric:
+                    wind_speed_val = wind_speed_val * 1.60934  # mph to km/h
+                    wind_gust_val = wind_gust_val * 1.60934
+
+                # Get precipitation probability
+                precip_prob = period.get("probabilityOfPrecipitation", {}).get("value", 0) or 0
+                
+                # Get weather description
+                weather_text = period.get("shortForecast", "")
+                
+                # Calculate dewpoint (approximation)
+                dewpoint = temp - ((100 - humidity) / 5) if humidity > 0 else temp
+
+                hourly_forecast = HourlyForecast(
+                    timestamp=timestamp,
+                    temperature=round(temp, 1),
+                    temperature_unit=temp_unit,
+                    humidity=round(humidity),
+                    wind_speed=round(wind_speed_val, 1),
+                    wind_direction=wind_direction,
+                    wind_gust=round(wind_gust_val, 1),
+                    pressure=0,  # Not available in hourly forecast
+                    visibility=0,  # Not available in hourly forecast
+                    precipitation_probability=precip_prob,
+                    precipitation_amount=0,  # Not available in hourly forecast
+                    weather_text=weather_text,
+                    weather_icon=self._text_to_icon(weather_text),
+                    sky_cover=0,  # Not available in hourly forecast
+                    dewpoint=round(dewpoint, 1),
+                    apparent_temperature=round(temp, 1),  # Approximation
+                    uv_index=0,  # Not available in hourly forecast
+                    is_daytime=period.get("isDaytime", True),
+                )
+                forecasts.append(hourly_forecast)
+
+            return forecasts
+
+        except Exception as e:
+            logger.error(f"Error getting hourly forecast for {location_key}: {e}")
+            raise
+
+    async def get_detailed_grid_data(
+        self, location_key: str, metric: bool = True
+    ) -> List[DetailedGridData]:
+        """Get detailed grid forecast data with comprehensive weather parameters"""
+        try:
+            # Parse location key as lat,lon
+            lat, lon = map(float, location_key.split(","))
+
+            # Get grid point information
+            grid_data = await self._get_grid_point(lat, lon)
+
+            # Get detailed grid data URL
+            grid_data_url = grid_data.get("forecastGridData")
+            if not grid_data_url:
+                raise ValueError("No detailed grid data available for location")
+
+            # Get the detailed grid data
+            response = await self.client.get(grid_data_url)
+            response.raise_for_status()
+
+            detailed_data = response.json()
+            properties = detailed_data.get("properties", {})
+
+            # Extract time series data
+            temp_unit = "C" if metric else "F"
+            speed_unit = "km/h" if metric else "mph"
+            distance_unit = "km" if metric else "miles"
+            precipitation_unit = "mm" if metric else "inches"
+
+            # Get temperature data
+            temperature_data = properties.get("temperature", {}).get("values", [])
+            dewpoint_data = properties.get("dewpoint", {}).get("values", [])
+            humidity_data = properties.get("relativeHumidity", {}).get("values", [])
+            wind_speed_data = properties.get("windSpeed", {}).get("values", [])
+            wind_direction_data = properties.get("windDirection", {}).get("values", [])
+            wind_gust_data = properties.get("windGust", {}).get("values", [])
+            sky_cover_data = properties.get("skyCover", {}).get("values", [])
+            precip_prob_data = properties.get("probabilityOfPrecipitation", {}).get("values", [])
+            precip_amount_data = properties.get("quantitativePrecipitation", {}).get("values", [])
+            visibility_data = properties.get("visibility", {}).get("values", [])
+            pressure_data = properties.get("pressure", {}).get("values", [])
+            apparent_temp_data = properties.get("apparentTemperature", {}).get("values", [])
+
+            # Create a dictionary to merge all data by time
+            time_data = {}
+            
+            # Process temperature data
+            for item in temperature_data:
+                valid_time = item.get("validTime", "")
+                if "/" in valid_time:
+                    start_time = valid_time.split("/")[0]
+                    timestamp = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                    temp_c = item.get("value")
+                    if temp_c is not None:
+                        temp = (temp_c * 9/5) + 32 if not metric else temp_c
+                        time_data[timestamp] = time_data.get(timestamp, {})
+                        time_data[timestamp]["temperature"] = temp
+
+            # Process other data types similarly
+            for data_type, data_values in [
+                ("dewpoint", dewpoint_data),
+                ("humidity", humidity_data),
+                ("wind_speed", wind_speed_data),
+                ("wind_direction", wind_direction_data),
+                ("wind_gust", wind_gust_data),
+                ("sky_cover", sky_cover_data),
+                ("precip_prob", precip_prob_data),
+                ("precip_amount", precip_amount_data),
+                ("visibility", visibility_data),
+                ("pressure", pressure_data),
+                ("apparent_temp", apparent_temp_data),
+            ]:
+                for item in data_values:
+                    valid_time = item.get("validTime", "")
+                    if "/" in valid_time:
+                        start_time = valid_time.split("/")[0]
+                        timestamp = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                        value = item.get("value")
+                        if value is not None:
+                            time_data[timestamp] = time_data.get(timestamp, {})
+                            time_data[timestamp][data_type] = value
+
+            # Convert to DetailedGridData objects
+            detailed_forecasts = []
+            for timestamp in sorted(time_data.keys()):
+                data = time_data[timestamp]
+                
+                temp = data.get("temperature", 0)
+                dewpoint = data.get("dewpoint", 0)
+                if not metric and dewpoint != 0:
+                    dewpoint = (dewpoint * 9/5) + 32
+                
+                humidity = data.get("humidity", 0)
+                wind_speed = data.get("wind_speed", 0)
+                wind_direction = data.get("wind_direction", 0)
+                wind_gust = data.get("wind_gust", 0)
+                sky_cover = data.get("sky_cover", 0)
+                precip_prob = data.get("precip_prob", 0)
+                precip_amount = data.get("precip_amount", 0)
+                visibility = data.get("visibility", 0)
+                pressure = data.get("pressure", 0)
+                apparent_temp = data.get("apparent_temp", temp)
+                
+                # Convert units if needed
+                if metric:
+                    if wind_speed > 0:
+                        wind_speed = wind_speed * 3.6  # m/s to km/h
+                    if wind_gust > 0:
+                        wind_gust = wind_gust * 3.6
+                    if visibility > 0:
+                        visibility = visibility / 1000  # meters to kilometers
+                    if precip_amount > 0:
+                        precip_amount = precip_amount * 1000  # meters to mm
+                else:
+                    if wind_speed > 0:
+                        wind_speed = wind_speed * 2.237  # m/s to mph
+                    if wind_gust > 0:
+                        wind_gust = wind_gust * 2.237
+                    if visibility > 0:
+                        visibility = visibility * 0.000621371  # meters to miles
+                    if precip_amount > 0:
+                        precip_amount = precip_amount * 39.3701  # meters to inches
+                    if not metric and apparent_temp != temp:
+                        apparent_temp = (apparent_temp * 9/5) + 32
+
+                detailed_forecast = DetailedGridData(
+                    timestamp=timestamp,
+                    temperature=round(temp, 1),
+                    dewpoint=round(dewpoint, 1),
+                    max_temperature=round(temp, 1),  # Approximation
+                    min_temperature=round(temp, 1),  # Approximation
+                    relative_humidity=round(humidity),
+                    apparent_temperature=round(apparent_temp, 1),
+                    heat_index=round(apparent_temp, 1),  # Approximation
+                    wind_chill=round(apparent_temp, 1),  # Approximation
+                    sky_cover=round(sky_cover),
+                    wind_direction=round(wind_direction, 1),
+                    wind_speed=round(wind_speed, 1),
+                    wind_gust=round(wind_gust, 1),
+                    weather_conditions=[],  # Not available in grid data
+                    probability_of_precipitation=round(precip_prob),
+                    quantitative_precipitation=round(precip_amount, 2),
+                    ice_accumulation=0,  # Not available
+                    snowfall_amount=0,  # Not available
+                    snow_level=0,  # Not available
+                    ceiling_height=0,  # Not available
+                    visibility=round(visibility, 1),
+                    transport_wind_speed=0,  # Not available
+                    transport_wind_direction=0,  # Not available
+                    mixing_height=0,  # Not available
+                    haines_index=0,  # Not available
+                    lightning_activity_level=0,  # Not available
+                    twenty_foot_wind_speed=0,  # Not available
+                    twenty_foot_wind_direction=0,  # Not available
+                    wave_height=0,  # Not available
+                    wave_period=0,  # Not available
+                    wave_direction=0,  # Not available
+                    pressure=round(pressure, 1),
+                    temperature_unit=temp_unit,
+                    distance_unit=distance_unit,
+                    speed_unit=speed_unit,
+                    precipitation_unit=precipitation_unit,
+                )
+                detailed_forecasts.append(detailed_forecast)
+
+            return detailed_forecasts
+
+        except Exception as e:
+            logger.error(f"Error getting detailed grid data for {location_key}: {e}")
             raise
 
     async def get_weather_alerts(self, location_key: str) -> List[WeatherAlert]:

@@ -46,6 +46,20 @@ class ForecastQuery(BaseModel):
     metric: bool = Field(True, description="Use metric units (Celsius)")
 
 
+class ExtendedForecastQuery(BaseModel):
+    """Extended forecast query parameters"""
+    location_key: str = Field(..., description="Location identifier (lat,lon format)")
+    days: int = Field(7, description="Number of days for forecast (up to 7)")
+    metric: bool = Field(True, description="Use metric units (Celsius)")
+
+
+class HourlyForecastQuery(BaseModel):
+    """Hourly forecast query parameters"""
+    location_key: str = Field(..., description="Location identifier (lat,lon format)")
+    hours: int = Field(168, description="Number of hours for forecast (up to 168 hours/7 days)")
+    metric: bool = Field(True, description="Use metric units (Celsius)")
+
+
 # Implementation functions for testing
 async def _search_locations_impl(query: str, language: str = "en-us") -> dict:
     """Implementation function for search_locations"""
@@ -248,6 +262,200 @@ async def _get_location_alerts_impl(query: str, language: str = "en-us") -> dict
         return {"success": False, "error": str(e)}
 
 
+async def _get_extended_forecast_impl(location_key: str, days: int = 7, metric: bool = True) -> dict:
+    """Implementation function for get_extended_forecast"""
+    try:
+        forecasts = await weather_client.get_daily_forecast(location_key, days, metric)
+        return {
+            "success": True,
+            "forecasts": [
+                {
+                    "date": f.date.isoformat(),
+                    "min_temperature": f.min_temperature,
+                    "max_temperature": f.max_temperature,
+                    "temperature_unit": f.temperature_unit,
+                    "day_weather_text": f.day_weather_text,
+                    "day_weather_icon": f.day_weather_icon,
+                    "day_precipitation_probability": f.day_precipitation_probability,
+                    "night_weather_text": f.night_weather_text,
+                    "night_weather_icon": f.night_weather_icon,
+                    "night_precipitation_probability": f.night_precipitation_probability
+                }
+                for f in forecasts
+            ],
+            "count": len(forecasts),
+            "days": days
+        }
+    except Exception as e:
+        logger.error(f"Extended forecast failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_hourly_forecast_impl(location_key: str, hours: int = 168, metric: bool = True) -> dict:
+    """Implementation function for get_hourly_forecast"""
+    try:
+        forecasts = await weather_client.get_hourly_forecast(location_key, hours, metric)
+        return {
+            "success": True,
+            "forecasts": [
+                {
+                    "timestamp": f.timestamp.isoformat(),
+                    "temperature": f.temperature,
+                    "temperature_unit": f.temperature_unit,
+                    "humidity": f.humidity,
+                    "wind_speed": f.wind_speed,
+                    "wind_direction": f.wind_direction,
+                    "wind_gust": f.wind_gust,
+                    "pressure": f.pressure,
+                    "visibility": f.visibility,
+                    "precipitation_probability": f.precipitation_probability,
+                    "precipitation_amount": f.precipitation_amount,
+                    "weather_text": f.weather_text,
+                    "weather_icon": f.weather_icon,
+                    "sky_cover": f.sky_cover,
+                    "dewpoint": f.dewpoint,
+                    "apparent_temperature": f.apparent_temperature,
+                    "uv_index": f.uv_index,
+                    "is_daytime": f.is_daytime
+                }
+                for f in forecasts
+            ],
+            "count": len(forecasts),
+            "hours": hours
+        }
+    except Exception as e:
+        logger.error(f"Hourly forecast failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_detailed_grid_data_impl(location_key: str, metric: bool = True) -> dict:
+    """Implementation function for get_detailed_grid_data"""
+    try:
+        grid_data = await weather_client.get_detailed_grid_data(location_key, metric)
+        return {
+            "success": True,
+            "grid_data": [
+                {
+                    "timestamp": d.timestamp.isoformat(),
+                    "temperature": d.temperature,
+                    "dewpoint": d.dewpoint,
+                    "max_temperature": d.max_temperature,
+                    "min_temperature": d.min_temperature,
+                    "relative_humidity": d.relative_humidity,
+                    "apparent_temperature": d.apparent_temperature,
+                    "heat_index": d.heat_index,
+                    "wind_chill": d.wind_chill,
+                    "sky_cover": d.sky_cover,
+                    "wind_direction": d.wind_direction,
+                    "wind_speed": d.wind_speed,
+                    "wind_gust": d.wind_gust,
+                    "weather_conditions": d.weather_conditions,
+                    "probability_of_precipitation": d.probability_of_precipitation,
+                    "quantitative_precipitation": d.quantitative_precipitation,
+                    "ice_accumulation": d.ice_accumulation,
+                    "snowfall_amount": d.snowfall_amount,
+                    "snow_level": d.snow_level,
+                    "ceiling_height": d.ceiling_height,
+                    "visibility": d.visibility,
+                    "pressure": d.pressure,
+                    "temperature_unit": d.temperature_unit,
+                    "distance_unit": d.distance_unit,
+                    "speed_unit": d.speed_unit,
+                    "precipitation_unit": d.precipitation_unit
+                }
+                for d in grid_data
+            ],
+            "count": len(grid_data)
+        }
+    except Exception as e:
+        logger.error(f"Detailed grid data failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_location_extended_forecast_impl(query: str, days: int = 7, language: str = "en-us") -> dict:
+    """Implementation function for get_location_extended_forecast"""
+    try:
+        # Search for location
+        locations = await weather_client.search_locations(query, language)
+        if not locations:
+            return {"success": False, "error": f"No locations found for '{query}'"}
+        
+        # Get extended forecast for first location
+        location_key = locations[0]["Key"]
+        forecasts = await weather_client.get_daily_forecast(location_key, days, True)
+        
+        return {
+            "success": True,
+            "location": locations[0],
+            "forecasts": [
+                {
+                    "date": f.date.isoformat(),
+                    "min_temperature": f.min_temperature,
+                    "max_temperature": f.max_temperature,
+                    "temperature_unit": f.temperature_unit,
+                    "day_weather_text": f.day_weather_text,
+                    "day_weather_icon": f.day_weather_icon,
+                    "day_precipitation_probability": f.day_precipitation_probability,
+                    "night_weather_text": f.night_weather_text,
+                    "night_weather_icon": f.night_weather_icon,
+                    "night_precipitation_probability": f.night_precipitation_probability
+                }
+                for f in forecasts
+            ],
+            "count": len(forecasts),
+            "days": days
+        }
+    except Exception as e:
+        logger.error(f"Location extended forecast failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_location_hourly_forecast_impl(query: str, hours: int = 168, language: str = "en-us") -> dict:
+    """Implementation function for get_location_hourly_forecast"""
+    try:
+        # Search for location
+        locations = await weather_client.search_locations(query, language)
+        if not locations:
+            return {"success": False, "error": f"No locations found for '{query}'"}
+        
+        # Get hourly forecast for first location
+        location_key = locations[0]["Key"]
+        forecasts = await weather_client.get_hourly_forecast(location_key, hours, True)
+        
+        return {
+            "success": True,
+            "location": locations[0],
+            "forecasts": [
+                {
+                    "timestamp": f.timestamp.isoformat(),
+                    "temperature": f.temperature,
+                    "temperature_unit": f.temperature_unit,
+                    "humidity": f.humidity,
+                    "wind_speed": f.wind_speed,
+                    "wind_direction": f.wind_direction,
+                    "wind_gust": f.wind_gust,
+                    "pressure": f.pressure,
+                    "visibility": f.visibility,
+                    "precipitation_probability": f.precipitation_probability,
+                    "precipitation_amount": f.precipitation_amount,
+                    "weather_text": f.weather_text,
+                    "weather_icon": f.weather_icon,
+                    "sky_cover": f.sky_cover,
+                    "dewpoint": f.dewpoint,
+                    "apparent_temperature": f.apparent_temperature,
+                    "uv_index": f.uv_index,
+                    "is_daytime": f.is_daytime
+                }
+                for f in forecasts
+            ],
+            "count": len(forecasts),
+            "hours": hours
+        }
+    except Exception as e:
+        logger.error(f"Location hourly forecast failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
 @mcp.tool()
 async def search_locations(query: LocationQuery) -> dict:
     """Search for weather locations by name or ZIP code"""
@@ -290,6 +498,42 @@ async def get_location_alerts(query: LocationQuery) -> dict:
     return await _get_location_alerts_impl(query.query, query.language)
 
 
+@mcp.tool()
+async def get_7day_forecast(forecast: ForecastQuery) -> dict:
+    """Get 7-day weather forecast for a location"""
+    return await _get_extended_forecast_impl(forecast.location_key, days=7, metric=forecast.metric)
+
+
+@mcp.tool()
+async def get_extended_forecast(forecast: ExtendedForecastQuery) -> dict:
+    """Get extended weather forecast for a location (up to 7 days)"""
+    return await _get_extended_forecast_impl(forecast.location_key, forecast.days, forecast.metric)
+
+
+@mcp.tool()
+async def get_hourly_forecast(forecast: HourlyForecastQuery) -> dict:
+    """Get hourly weather forecast for a location (up to 168 hours/7 days)"""
+    return await _get_hourly_forecast_impl(forecast.location_key, forecast.hours, forecast.metric)
+
+
+@mcp.tool()
+async def get_detailed_grid_data(location: LocationKey) -> dict:
+    """Get detailed grid forecast data with comprehensive weather parameters"""
+    return await _get_detailed_grid_data_impl(location.location_key, metric=True)
+
+
+@mcp.tool()
+async def get_location_extended_forecast(query: LocationQuery) -> dict:
+    """Get 7-day forecast by searching for a location first"""
+    return await _get_location_extended_forecast_impl(query.query, days=7, language=query.language)
+
+
+@mcp.tool()
+async def get_location_hourly_forecast(query: LocationQuery) -> dict:
+    """Get hourly forecast by searching for a location first"""
+    return await _get_location_hourly_forecast_impl(query.query, hours=168, language=query.language)
+
+
 async def test_nws_api():
     """Test the NWS API connection"""
     try:
@@ -311,6 +555,24 @@ async def test_nws_api():
             logger.info("Testing 5-day forecast...")
             forecasts = await weather_client.get_5day_forecast(location_key)
             logger.info(f"✓ 5-day forecast: {len(forecasts)} days retrieved")
+            
+            # Test 7-day forecast
+            logger.info("Testing 7-day forecast...")
+            extended_forecasts = await weather_client.get_7day_forecast(location_key)
+            logger.info(f"✓ 7-day forecast: {len(extended_forecasts)} days retrieved")
+            
+            # Test hourly forecast
+            logger.info("Testing hourly forecast...")
+            hourly_forecasts = await weather_client.get_hourly_forecast(location_key, hours=24)
+            logger.info(f"✓ Hourly forecast: {len(hourly_forecasts)} hours retrieved")
+            
+            # Test detailed grid data
+            logger.info("Testing detailed grid data...")
+            try:
+                grid_data = await weather_client.get_detailed_grid_data(location_key)
+                logger.info(f"✓ Detailed grid data: {len(grid_data)} data points retrieved")
+            except Exception as e:
+                logger.warning(f"⚠ Detailed grid data test failed (may not be available): {e}")
             
             # Test alerts
             logger.info("Testing weather alerts...")

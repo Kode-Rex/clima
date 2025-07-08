@@ -325,6 +325,39 @@ class WeatherSSEManager:
 
                 logger.info(f"Sent initial weather data to connection {connection_id}")
 
+                # Send 7-day forecast immediately
+                try:
+                    forecasts = await self.weather_client.get_7day_forecast(location_key)
+                    if forecasts:
+                        forecast_data = {
+                            "type": "forecast_update",
+                            "location_key": location_key,
+                            "zip_code": connection.zip_code,
+                            "location_name": connection.location_name,
+                            "timestamp": datetime.now().isoformat(),
+                            "forecasts": [
+                                {
+                                    "date": forecast.date.isoformat(),
+                                    "min_temperature": forecast.min_temperature,
+                                    "max_temperature": forecast.max_temperature,
+                                    "temperature_unit": forecast.temperature_unit,
+                                    "day_weather_text": forecast.day_weather_text,
+                                    "day_weather_icon": forecast.day_weather_icon,
+                                    "day_precipitation_probability": forecast.day_precipitation_probability,
+                                    "night_weather_text": forecast.night_weather_text,
+                                    "night_weather_icon": forecast.night_weather_icon,
+                                    "night_precipitation_probability": forecast.night_precipitation_probability,
+                                }
+                                for forecast in forecasts
+                            ],
+                        }
+
+                        yield f"event: forecast_update\ndata: {json.dumps(forecast_data)}\n\n"
+                        logger.info(f"Sent 7-day forecast to connection {connection_id}")
+
+                except Exception as e:
+                    logger.warning(f"Could not get 7-day forecast for {location_key}: {e}")
+
                 # Check for current alerts immediately
                 try:
                     current_alerts = await self.weather_client.get_weather_alerts(

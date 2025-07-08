@@ -189,6 +189,35 @@
             font-family: monospace;
             font-size: 0.9em;
         }
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .forecast-day {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .forecast-day h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .forecast-temps {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .temp-high {
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .temp-low {
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -221,6 +250,11 @@
         <div id="alerts-container">
             <h2>Weather Alerts</h2>
             <div id="alerts-data">No active alerts</div>
+        </div>
+        
+        <div id="forecast-container">
+            <h2>7-Day Forecast</h2>
+            <div id="forecast-data">No forecast data yet</div>
         </div>
         
         <div id="log-container">
@@ -329,6 +363,37 @@
             }
         }
         
+        function updateForecastData(data) {
+            const forecastElement = document.getElementById('forecast-data');
+            if (data.forecasts && data.forecasts.length > 0) {
+                let forecastHtml = '<div class="forecast-grid">';
+                data.forecasts.forEach(forecast => {
+                    const date = new Date(forecast.date);
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    forecastHtml += `
+                        <div class="forecast-day">
+                            <h4>${dayName}<br>${monthDay}</h4>
+                            <div class="forecast-temps">
+                                <span class="temp-high">${forecast.max_temperature}°</span>
+                                <span class="temp-low">${forecast.min_temperature}°</span>
+                            </div>
+                            <p><strong>Day:</strong> ${forecast.day_weather_text}</p>
+                            <p><strong>Night:</strong> ${forecast.night_weather_text}</p>
+                            <p><strong>Rain:</strong> ${Math.max(forecast.day_precipitation_probability, forecast.night_precipitation_probability)}%</p>
+                        </div>
+                    `;
+                });
+                forecastHtml += '</div>';
+                forecastElement.innerHTML = forecastHtml;
+            } else {
+                forecastElement.innerHTML = '<p>No forecast data available</p>';
+            }
+        }
+        
+
+        
         function connect() {
             if (isConnected) {
                 log('Already connected');
@@ -388,6 +453,16 @@
                     updateAlerts(data);
                 } catch (e) {
                     log(`Error parsing weather alert: ${e.message}`);
+                }
+            });
+            
+            eventSource.addEventListener('forecast_update', function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`7-day forecast update for ${data.location_name}: ${data.forecasts.length} days`);
+                    updateForecastData(data);
+                } catch (e) {
+                    log(`Error parsing forecast update: ${e.message}`);
                 }
             });
             
@@ -467,10 +542,11 @@
                 updateStatus('Disconnected');
                 log('Disconnected from weather stream');
                 
-                // Clear weather and alert data to prevent stale info on reconnect
+                // Clear all weather data to prevent stale info on reconnect
                 document.getElementById('weather-data').innerHTML = 'No data yet';
                 document.getElementById('alerts-data').innerHTML = 'No active alerts';
-                log('Cleared weather and alert data');
+                document.getElementById('forecast-data').innerHTML = 'No forecast data yet';
+                log('Cleared all weather data');
             }
         }
         
