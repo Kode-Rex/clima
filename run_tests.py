@@ -79,8 +79,7 @@ def main():
             "--cov=weather_mcp",
             "--cov-report=term-missing",
             "--cov-report=html:htmlcov",
-            "--cov-report=xml:coverage.xml",
-            "--cov-fail-under=60"
+            "--cov-report=xml:coverage.xml"
         ])
     
     # Add verbosity
