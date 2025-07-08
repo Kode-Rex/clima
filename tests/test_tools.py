@@ -15,6 +15,11 @@ from main import (
     _get_location_weather_impl,
     _get_weather_alerts_impl,
     _search_locations_impl,
+    _get_extended_forecast_impl,
+    _get_hourly_forecast_impl,
+    _get_detailed_grid_data_impl,
+    _get_location_extended_forecast_impl,
+    _get_location_hourly_forecast_impl,
     weather_client,
 )
 
@@ -341,6 +346,250 @@ class TestWeatherTools:
             )
 
             result = await _get_location_alerts_impl("New York")
+
+            assert result["success"] is False
+            assert "Location API Error" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_extended_forecast_success(self, mock_weather_client):
+        """Test successful extended forecast retrieval"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_extended_forecast_impl("40.7128,-74.0060", days=7, metric=True)
+
+            assert result["success"] is True
+            assert result["count"] == 3
+            assert len(result["forecasts"]) == 3
+
+            forecast_data = result["forecasts"][0]
+            assert forecast_data["min_temperature"] == -2.0
+            assert forecast_data["max_temperature"] == 5.0
+            assert forecast_data["day_weather_text"] == "Partly Cloudy"
+            assert forecast_data["night_weather_text"] == "Clear"
+
+            mock_weather_client.get_daily_forecast.assert_called_once_with(
+                "40.7128,-74.0060", 7, True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_extended_forecast_default_params(self, mock_weather_client):
+        """Test extended forecast with default parameters"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_extended_forecast_impl("40.7128,-74.0060")
+
+            assert result["success"] is True
+            mock_weather_client.get_daily_forecast.assert_called_once_with(
+                "40.7128,-74.0060", 7, True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_extended_forecast_error(self, mock_weather_client):
+        """Test get_extended_forecast error handling"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.get_daily_forecast.side_effect = Exception(
+                "Extended Forecast API Error"
+            )
+
+            result = await _get_extended_forecast_impl("40.7128,-74.0060")
+
+            assert result["success"] is False
+            assert "Extended Forecast API Error" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_hourly_forecast_success(self, mock_weather_client):
+        """Test successful hourly forecast retrieval"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_hourly_forecast_impl("40.7128,-74.0060", hours=24, metric=True)
+
+            assert result["success"] is True
+            assert result["count"] == 2
+            assert len(result["forecasts"]) == 2
+
+            forecast_data = result["forecasts"][0]
+            assert forecast_data["temperature"] == 6.0
+            assert forecast_data["temperature_unit"] == "C"
+            assert forecast_data["humidity"] == 60
+            assert forecast_data["weather_text"] == "Partly Cloudy"
+            assert forecast_data["precipitation_probability"] == 10
+
+            mock_weather_client.get_hourly_forecast.assert_called_once_with(
+                "40.7128,-74.0060", 24, True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_hourly_forecast_default_params(self, mock_weather_client):
+        """Test hourly forecast with default parameters"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_hourly_forecast_impl("40.7128,-74.0060")
+
+            assert result["success"] is True
+            mock_weather_client.get_hourly_forecast.assert_called_once_with(
+                "40.7128,-74.0060", 168, True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_hourly_forecast_error(self, mock_weather_client):
+        """Test get_hourly_forecast error handling"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.get_hourly_forecast.side_effect = Exception(
+                "Hourly Forecast API Error"
+            )
+
+            result = await _get_hourly_forecast_impl("40.7128,-74.0060")
+
+            assert result["success"] is False
+            assert "Hourly Forecast API Error" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_detailed_grid_data_success(self, mock_weather_client):
+        """Test successful detailed grid data retrieval"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_detailed_grid_data_impl("40.7128,-74.0060", metric=True)
+
+            assert result["success"] is True
+            assert result["count"] == 2
+            assert len(result["grid_data"]) == 2
+
+            grid_data = result["grid_data"][0]
+            assert grid_data["temperature"] == 6.0
+            assert grid_data["temperature_unit"] == "C"
+            assert grid_data["dewpoint"] == 2.0
+            assert grid_data["relative_humidity"] == 60
+            assert grid_data["wind_speed"] == 15.0
+            assert grid_data["pressure"] == 1015.0
+            assert grid_data["apparent_temperature"] == 5.5
+            assert grid_data["heat_index"] == 6.0
+
+            mock_weather_client.get_detailed_grid_data.assert_called_once_with(
+                "40.7128,-74.0060", True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_detailed_grid_data_default_params(self, mock_weather_client):
+        """Test detailed grid data with default parameters"""
+        with patch("main.weather_client", mock_weather_client):
+            result = await _get_detailed_grid_data_impl("40.7128,-74.0060")
+
+            assert result["success"] is True
+            mock_weather_client.get_detailed_grid_data.assert_called_once_with(
+                "40.7128,-74.0060", True
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_detailed_grid_data_error(self, mock_weather_client):
+        """Test get_detailed_grid_data error handling"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.get_detailed_grid_data.side_effect = Exception(
+                "Grid Data API Error"
+            )
+
+            result = await _get_detailed_grid_data_impl("40.7128,-74.0060")
+
+            assert result["success"] is False
+            assert "Grid Data API Error" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_extended_forecast_success(
+        self, mock_weather_client, sample_location_search_response
+    ):
+        """Test successful location extended forecast retrieval"""
+        with patch("main.weather_client", mock_weather_client):
+            # Mock the search to return our location data
+            mock_weather_client.search_locations.return_value = (
+                sample_location_search_response
+            )
+
+            result = await _get_location_extended_forecast_impl("New York", days=7)
+
+            assert result["success"] is True
+            assert result["location"] == sample_location_search_response[0]
+            assert result["count"] == 3
+            assert len(result["forecasts"]) == 3
+
+            mock_weather_client.search_locations.assert_called_once_with(
+                "New York", "en-us"
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_extended_forecast_no_locations(self, mock_weather_client):
+        """Test location extended forecast when no locations found"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.search_locations.return_value = []
+
+            result = await _get_location_extended_forecast_impl("NonExistentPlace")
+
+            assert result["success"] is False
+            assert "No locations found" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_extended_forecast_error(self, mock_weather_client):
+        """Test get_location_extended_forecast error handling"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.search_locations.side_effect = Exception(
+                "Location API Error"
+            )
+
+            result = await _get_location_extended_forecast_impl("New York")
+
+            assert result["success"] is False
+            assert "Location API Error" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_hourly_forecast_success(
+        self, mock_weather_client, sample_location_search_response
+    ):
+        """Test successful location hourly forecast retrieval"""
+        with patch("main.weather_client", mock_weather_client):
+            # Mock the search to return our location data
+            mock_weather_client.search_locations.return_value = (
+                sample_location_search_response
+            )
+
+            result = await _get_location_hourly_forecast_impl("New York", hours=24)
+
+            assert result["success"] is True
+            assert result["location"] == sample_location_search_response[0]
+            assert result["count"] == 2
+            assert len(result["forecasts"]) == 2
+
+            mock_weather_client.search_locations.assert_called_once_with(
+                "New York", "en-us"
+            )
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_hourly_forecast_no_locations(self, mock_weather_client):
+        """Test location hourly forecast when no locations found"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.search_locations.return_value = []
+
+            result = await _get_location_hourly_forecast_impl("NonExistentPlace")
+
+            assert result["success"] is False
+            assert "No locations found" in result["error"]
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_get_location_hourly_forecast_error(self, mock_weather_client):
+        """Test get_location_hourly_forecast error handling"""
+        with patch("main.weather_client", mock_weather_client):
+            mock_weather_client.search_locations.side_effect = Exception(
+                "Location API Error"
+            )
+
+            result = await _get_location_hourly_forecast_impl("New York")
 
             assert result["success"] is False
             assert "Location API Error" in result["error"]

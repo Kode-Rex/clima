@@ -14,6 +14,8 @@ from weather_mcp.nws import (
     NationalWeatherServiceClient,
     WeatherAlert,
     WeatherForecast,
+    HourlyForecast,
+    DetailedGridData,
 )
 
 
@@ -313,6 +315,179 @@ def sample_hourly_forecast_response():
 
 
 @pytest.fixture
+def sample_7day_forecast():
+    """Sample 7-day forecast with WeatherForecast objects"""
+    return [
+        WeatherForecast(
+            date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=timezone.utc),
+            min_temperature=-2.0,
+            max_temperature=5.0,
+            temperature_unit="C",
+            day_weather_text="Partly Cloudy",
+            day_weather_icon=3,
+            day_precipitation_probability=0,
+            night_weather_text="Clear",
+            night_weather_icon=33,
+            night_precipitation_probability=0,
+        ),
+        WeatherForecast(
+            date=datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc),
+            min_temperature=-3.0,
+            max_temperature=4.0,
+            temperature_unit="C",
+            day_weather_text="Sunny",
+            day_weather_icon=1,
+            day_precipitation_probability=0,
+            night_weather_text="Clear",
+            night_weather_icon=33,
+            night_precipitation_probability=0,
+        ),
+        WeatherForecast(
+            date=datetime(2024, 1, 17, 7, 0, 0, tzinfo=timezone.utc),
+            min_temperature=-1.0,
+            max_temperature=6.0,
+            temperature_unit="C",
+            day_weather_text="Partly Cloudy",
+            day_weather_icon=3,
+            day_precipitation_probability=10,
+            night_weather_text="Cloudy",
+            night_weather_icon=26,
+            night_precipitation_probability=20,
+        ),
+    ]
+
+
+@pytest.fixture
+def sample_hourly_forecast_objects():
+    """Sample hourly forecast with HourlyForecast objects"""
+    return [
+        HourlyForecast(
+            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=timezone.utc),
+            temperature=6.0,
+            temperature_unit="C",
+            humidity=60,
+            wind_speed=15.0,
+            wind_direction="SW",
+            wind_gust=20.0,
+            pressure=1015.0,
+            visibility=16.0,
+            precipitation_probability=10,
+            precipitation_amount=0.0,
+            weather_text="Partly Cloudy",
+            weather_icon=3,
+            sky_cover=25,
+            dewpoint=2.0,
+            apparent_temperature=5.5,
+            uv_index=2,
+            is_daytime=True,
+        ),
+        HourlyForecast(
+            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=timezone.utc),
+            temperature=5.5,
+            temperature_unit="C",
+            humidity=62,
+            wind_speed=14.0,
+            wind_direction="SW",
+            wind_gust=18.0,
+            pressure=1016.0,
+            visibility=15.0,
+            precipitation_probability=5,
+            precipitation_amount=0.0,
+            weather_text="Partly Cloudy",
+            weather_icon=3,
+            sky_cover=30,
+            dewpoint=1.5,
+            apparent_temperature=5.0,
+            uv_index=2,
+            is_daytime=True,
+        ),
+    ]
+
+
+@pytest.fixture
+def sample_detailed_grid_data():
+    """Sample detailed grid data with DetailedGridData objects"""
+    return [
+        DetailedGridData(
+            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=timezone.utc),
+            temperature=6.0,
+            dewpoint=2.0,
+            max_temperature=7.0,
+            min_temperature=5.0,
+            relative_humidity=60,
+            apparent_temperature=5.5,
+            heat_index=6.0,
+            wind_chill=4.5,
+            sky_cover=25,
+            wind_direction=225.0,
+            wind_speed=15.0,
+            wind_gust=20.0,
+            weather_conditions=["Partly Cloudy"],
+            probability_of_precipitation=10,
+            quantitative_precipitation=0.0,
+            ice_accumulation=0.0,
+            snowfall_amount=0.0,
+            snow_level=0.0,
+            ceiling_height=3000.0,
+            visibility=16.0,
+            transport_wind_speed=15.0,
+            transport_wind_direction=225.0,
+            mixing_height=1000.0,
+            haines_index=2.0,
+            lightning_activity_level=0,
+            twenty_foot_wind_speed=15.0,
+            twenty_foot_wind_direction=225.0,
+            wave_height=0.0,
+            wave_period=0.0,
+            wave_direction=0.0,
+            pressure=1015.0,
+            temperature_unit="C",
+            distance_unit="mi",
+            speed_unit="mph",
+            precipitation_unit="in",
+        ),
+        DetailedGridData(
+            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=timezone.utc),
+            temperature=5.5,
+            dewpoint=1.5,
+            max_temperature=6.5,
+            min_temperature=4.5,
+            relative_humidity=62,
+            apparent_temperature=5.0,
+            heat_index=5.5,
+            wind_chill=4.0,
+            sky_cover=30,
+            wind_direction=220.0,
+            wind_speed=14.0,
+            wind_gust=18.0,
+            weather_conditions=["Partly Cloudy"],
+            probability_of_precipitation=5,
+            quantitative_precipitation=0.0,
+            ice_accumulation=0.0,
+            snowfall_amount=0.0,
+            snow_level=0.0,
+            ceiling_height=3500.0,
+            visibility=15.0,
+            transport_wind_speed=14.0,
+            transport_wind_direction=220.0,
+            mixing_height=1100.0,
+            haines_index=2.0,
+            lightning_activity_level=0,
+            twenty_foot_wind_speed=14.0,
+            twenty_foot_wind_direction=220.0,
+            wave_height=0.0,
+            wave_period=0.0,
+            wave_direction=0.0,
+            pressure=1016.0,
+            temperature_unit="C",
+            distance_unit="mi",
+            speed_unit="mph",
+            precipitation_unit="in",
+        ),
+    ]
+
+
+@pytest.fixture
 def mock_weather_client(
     mock_config,
     sample_location_search_response,
@@ -320,6 +495,9 @@ def mock_weather_client(
     sample_forecast_response,
     sample_weather_alerts_response,
     sample_hourly_forecast_response,
+    sample_7day_forecast,
+    sample_hourly_forecast_objects,
+    sample_detailed_grid_data,
 ):
     """Create a mock NationalWeatherServiceClient with predefined responses"""
     client = AsyncMock(spec=NationalWeatherServiceClient)
@@ -369,6 +547,12 @@ def mock_weather_client(
     ]
     client.get_5day_forecast = AsyncMock(return_value=mock_forecast)
 
+    # Mock extended forecast methods
+    client.get_7day_forecast = AsyncMock(return_value=sample_7day_forecast)
+    client.get_daily_forecast = AsyncMock(return_value=sample_7day_forecast)
+    client.get_hourly_forecast = AsyncMock(return_value=sample_hourly_forecast_objects)
+    client.get_detailed_grid_data = AsyncMock(return_value=sample_detailed_grid_data)
+
     # Mock alerts with proper WeatherAlert objects
     mock_alerts = [
         WeatherAlert(
@@ -385,7 +569,6 @@ def mock_weather_client(
     client.get_weather_alerts = AsyncMock(return_value=mock_alerts)
 
     # Mock other methods
-    client.get_hourly_forecast = AsyncMock(return_value=sample_hourly_forecast_response)
     client.get_indices = AsyncMock(
         return_value={"airquality": {"value": 45, "category": "good"}}
     )
