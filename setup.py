@@ -21,7 +21,7 @@ setup(
     version="0.1.0",
     author="Climate MCP Team",
     author_email="",
-    description="AccuWeather API wrapper with MCP server and SSE support",
+    description="National Weather Service API wrapper with MCP server and SSE support",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/your-org/clima-mcp",
@@ -32,8 +32,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -41,7 +39,7 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=read_requirements(),
     extras_require={
         "dev": [
@@ -62,7 +60,7 @@ setup(
         "weather_mcp": ["*.py"],
         "examples": ["*.html", "*.py", "*.js"],
     },
-    keywords="weather, mcp, accuweather, api, sse, server-sent-events, climate",
+    keywords="weather, mcp, nws, national-weather-service, api, sse, server-sent-events, climate",
     project_urls={
         "Bug Reports": "https://github.com/your-org/clima-mcp/issues",
         "Source": "https://github.com/your-org/clima-mcp",
