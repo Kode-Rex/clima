@@ -466,6 +466,11 @@
                 isConnected = false;
                 updateStatus('Disconnected');
                 log('Disconnected from weather stream');
+                
+                // Clear weather and alert data to prevent stale info on reconnect
+                document.getElementById('weather-data').innerHTML = 'No data yet';
+                document.getElementById('alerts-data').innerHTML = 'No active alerts';
+                log('Cleared weather and alert data');
             }
         }
         
