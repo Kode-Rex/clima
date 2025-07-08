@@ -2,8 +2,9 @@
 Tests for MCP and SSE server functionality
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from weather_mcp.sse import WeatherSSEApp, WeatherSSEManager
@@ -16,12 +17,12 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_create_server_with_config(self, mock_config):
         """Test server creation with provided config"""
-        with patch('main.NationalWeatherServiceClient') as mock_client_class:
+        with patch("main.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            
+
             from main import mcp
-            
+
             assert mcp is not None
             assert mcp.name == "Weather MCP"
 
@@ -29,38 +30,38 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_create_server_without_config(self):
         """Test server creation without provided config (uses default)"""
-        with patch('main.NationalWeatherServiceClient') as mock_client_class:
+        with patch("main.NationalWeatherServiceClient") as mock_client_class:
             mock_config = MagicMock()
-            
+
             from main import mcp
-            
+
             assert mcp is not None
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_server_tools_registration(self, mock_config):
         """Test that all tools are properly registered with the server"""
-        with patch('main.NationalWeatherServiceClient') as mock_client_class:
+        with patch("main.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            
+
             from main import mcp
-            
+
             # Check that the server has the expected tools
             # Note: FastMCP doesn't expose tools directly, so we test indirectly
-            assert hasattr(mcp, 'name')
+            assert hasattr(mcp, "name")
             assert mcp.name == "Weather MCP"
 
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_mcp_server_initialization(self, mock_config):
         """Test MCP server initialization process"""
-        with patch('main.NationalWeatherServiceClient') as mock_client_class:
+        with patch("main.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
-            
+
             from main import mcp
-            
+
             # Verify weather client is initialized
             assert mcp is not None
 
@@ -80,7 +81,9 @@ class TestSSEServer:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_sse_manager_initialization(self, sse_manager, mock_config, mock_weather_client):
+    async def test_sse_manager_initialization(
+        self, sse_manager, mock_config, mock_weather_client
+    ):
         """Test SSE manager initialization"""
         assert sse_manager.config == mock_config
         assert sse_manager.weather_client == mock_weather_client
@@ -108,10 +111,10 @@ class TestSSEServer:
         """Test SSE connection addition and removal"""
         connection_id = "test-conn-123"
         location_key = "349727"
-        
+
         # Add connection
         connection = sse_manager.add_connection(connection_id, location_key)
-        
+
         assert connection.id == connection_id
         assert connection.location_key == location_key
         assert connection_id in sse_manager.connections
@@ -121,7 +124,9 @@ class TestSSEServer:
         # Update heartbeat
         original_heartbeat = connection.last_heartbeat
         sse_manager.update_heartbeat(connection_id)
-        assert sse_manager.connections[connection_id].last_heartbeat > original_heartbeat
+        assert (
+            sse_manager.connections[connection_id].last_heartbeat > original_heartbeat
+        )
 
         # Remove connection
         sse_manager.remove_connection(connection_id)
@@ -133,14 +138,15 @@ class TestSSEServer:
         """Test SSE connection expiry detection"""
         connection_id = "test-conn-123"
         location_key = "349727"
-        
+
         connection = sse_manager.add_connection(connection_id, location_key)
-        
+
         # Test not expired (fresh connection)
         assert not connection.is_expired(300)
-        
+
         # Test expired (simulate old heartbeat)
         from datetime import datetime, timedelta
+
         connection.last_heartbeat = datetime.now() - timedelta(seconds=400)
         assert connection.is_expired(300)
 
@@ -150,18 +156,18 @@ class TestSSEServer:
         assert sse_app.config == mock_config
         assert sse_app.weather_client == mock_weather_client
         assert sse_app.sse_manager is not None
-        assert hasattr(sse_app, 'app')
+        assert hasattr(sse_app, "app")
 
     @pytest.mark.integration
     def test_sse_app_routes(self, sse_app):
         """Test SSE app FastAPI routes"""
         app = sse_app.get_app()
         client = TestClient(app)
-        
+
         # Test status endpoint
         response = client.get("/weather/status")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert "status" in data
         assert "active_connections" in data
@@ -172,16 +178,16 @@ class TestSSEServer:
         """Test SSE heartbeat endpoint"""
         app = sse_app.get_app()
         client = TestClient(app)
-        
+
         # Add a connection first
         connection_id = "test-conn-123"
         location_key = "349727"
         sse_app.sse_manager.add_connection(connection_id, location_key)
-        
+
         # Test heartbeat
         response = client.post(f"/weather/heartbeat/{connection_id}")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["status"] == "ok"
         assert "timestamp" in data
@@ -191,7 +197,7 @@ class TestSSEServer:
         """Test SSE heartbeat with unknown connection"""
         app = sse_app.get_app()
         client = TestClient(app)
-        
+
         # Test heartbeat for non-existent connection (should still return 200)
         response = client.post("/weather/heartbeat/unknown-connection")
         assert response.status_code == 200
@@ -202,14 +208,15 @@ class TestSSEServer:
         """Test SSE alert monitoring functionality"""
         connection_id = "test-conn-123"
         location_key = "349727"
-        
+
         # Add connection
         sse_manager.add_connection(connection_id, location_key)
-        
+
         # Mock weather alerts
-        from weather_mcp.nws import WeatherAlert
         from datetime import datetime, timezone
-        
+
+        from weather_mcp.nws import WeatherAlert
+
         mock_alert = WeatherAlert(
             alert_id="test-alert-123",
             title="Test Warning",
@@ -218,15 +225,15 @@ class TestSSEServer:
             category="meteorological",
             start_time=datetime.now(timezone.utc),
             end_time=None,
-            areas=["Test Area"]
+            areas=["Test Area"],
         )
-        
+
         mock_weather_client.get_weather_alerts.return_value = [mock_alert]
-        
+
         # Manually trigger alert check (simulating the background task)
         current_alerts = await mock_weather_client.get_weather_alerts(location_key)
         cached_alerts = sse_manager.alert_cache.get(location_key, [])
-        
+
         assert len(current_alerts) == 1
         assert current_alerts[0].alert_id == "test-alert-123"
         assert len(cached_alerts) == 0  # No cached alerts initially
@@ -237,26 +244,26 @@ class TestSSEServer:
         location_key = "349727"
         conn1_id = "conn-1"
         conn2_id = "conn-2"
-        
+
         # Add two connections for same location
         sse_manager.add_connection(conn1_id, location_key)
         sse_manager.add_connection(conn2_id, location_key)
-        
+
         assert len(sse_manager.connections) == 2
         assert len(sse_manager.location_subscribers[location_key]) == 2
         assert conn1_id in sse_manager.location_subscribers[location_key]
         assert conn2_id in sse_manager.location_subscribers[location_key]
-        
+
         # Remove one connection
         sse_manager.remove_connection(conn1_id)
-        
+
         assert len(sse_manager.connections) == 1
         assert len(sse_manager.location_subscribers[location_key]) == 1
         assert conn2_id in sse_manager.location_subscribers[location_key]
-        
+
         # Remove last connection
         sse_manager.remove_connection(conn2_id)
-        
+
         assert len(sse_manager.connections) == 0
         assert location_key not in sse_manager.location_subscribers
 
@@ -269,21 +276,22 @@ class TestServerIntegration:
     async def test_server_with_mock_environment(self, mock_server_environment):
         """Test server creation in a fully mocked environment"""
         env = mock_server_environment
-        
-        with patch('main.weather_client', env['weather_client']):
+
+        with patch("main.weather_client", env["weather_client"]):
             # Test that the global weather client is properly mocked
             from main import mcp
+
             assert mcp is not None
 
     @pytest.mark.integration
     def test_sse_app_with_mock_environment(self, mock_server_environment):
         """Test SSE app creation in a fully mocked environment"""
         env = mock_server_environment
-        
+
         # Create SSE app with mocked environment
-        sse_app = WeatherSSEApp(env['config'], env['weather_client'])
+        sse_app = WeatherSSEApp(env["config"], env["weather_client"])
         app = sse_app.get_app()
-        
+
         client = TestClient(app)
         response = client.get("/weather/status")
-        assert response.status_code == 200 
+        assert response.status_code == 200

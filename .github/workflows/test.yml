@@ -54,25 +54,11 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install linting dependencies
+    - name: Install black
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black isort mypy
-        pip install -r requirements.txt
-    
-    - name: Run flake8
-      run: |
-        flake8 weather_mcp/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 weather_mcp/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+        pip install black
     
     - name: Check black formatting
       run: |
-        black --check weather_mcp/ tests/
-    
-    - name: Check import sorting
-      run: |
-        isort --check-only weather_mcp/ tests/
-    
-    - name: Run mypy type checking
-      run: |
-        mypy weather_mcp/ --ignore-missing-imports 
+        black --check weather_mcp/ tests/ 

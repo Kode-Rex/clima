@@ -2,17 +2,18 @@
 Shared pytest fixtures and mocks for weather MCP server tests
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from weather_mcp.config import Config
 from weather_mcp.nws import (
-    NationalWeatherServiceClient,
     CurrentWeather,
+    NationalWeatherServiceClient,
+    WeatherAlert,
     WeatherForecast,
-    WeatherAlert
 )
 
 
@@ -28,7 +29,7 @@ def mock_config():
         sse_heartbeat_interval=30,
         sse_max_connections=100,
         cache_ttl_seconds=300,
-        cache_max_size=100
+        cache_max_size=100,
     )
 
 
@@ -39,16 +40,9 @@ def sample_location_search_response():
         {
             "Key": "40.7127753,-74.0059728",
             "LocalizedName": "New York",
-            "AdministrativeArea": {
-                "LocalizedName": "New York"
-            },
-            "Country": {
-                "LocalizedName": "United States"
-            },
-            "GeoPosition": {
-                "Latitude": 40.7127753,
-                "Longitude": -74.0059728
-            },
+            "AdministrativeArea": {"LocalizedName": "New York"},
+            "Country": {"LocalizedName": "United States"},
+            "GeoPosition": {"Latitude": 40.7127753, "Longitude": -74.0059728},
             "place_id": 123456,
             "licence": "Data OpenStreetMap",
             "osm_type": "relation",
@@ -61,9 +55,9 @@ def sample_location_search_response():
                 "county": "New York County",
                 "state": "New York",
                 "country": "United States",
-                "postcode": "10001"
+                "postcode": "10001",
             },
-            "boundingbox": ["40.4773991", "40.9175771", "-74.2590879", "-73.7004845"]
+            "boundingbox": ["40.4773991", "40.9175771", "-74.2590879", "-73.7004845"],
         }
     ]
 
@@ -78,63 +72,63 @@ def sample_current_weather_response():
             "temperature": {
                 "value": 5.0,
                 "unitCode": "wmoUnit:degC",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "dewpoint": {
                 "value": -2.0,
                 "unitCode": "wmoUnit:degC",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "windDirection": {
                 "value": 225,
                 "unitCode": "wmoUnit:degree_(angle)",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "windSpeed": {
                 "value": 15.0,
                 "unitCode": "wmoUnit:km_h-1",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "windGust": {
                 "value": None,
                 "unitCode": "wmoUnit:km_h-1",
-                "qualityControl": "Z"
+                "qualityControl": "Z",
             },
             "barometricPressure": {
                 "value": 101500,
                 "unitCode": "wmoUnit:Pa",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "seaLevelPressure": {
                 "value": 101500,
                 "unitCode": "wmoUnit:Pa",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "visibility": {
                 "value": 16000,
                 "unitCode": "wmoUnit:m",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "relativeHumidity": {
                 "value": 65,
                 "unitCode": "wmoUnit:percent",
-                "qualityControl": "V"
+                "qualityControl": "V",
             },
             "windChill": {
                 "value": None,
                 "unitCode": "wmoUnit:degC",
-                "qualityControl": "Z"
+                "qualityControl": "Z",
             },
             "heatIndex": {
                 "value": None,
                 "unitCode": "wmoUnit:degC",
-                "qualityControl": "Z"
+                "qualityControl": "Z",
             },
             "precipitationLastHour": {
                 "value": 0,
                 "unitCode": "wmoUnit:mm",
-                "qualityControl": "V"
-            }
+                "qualityControl": "V",
+            },
         }
     }
 
@@ -158,7 +152,7 @@ def sample_forecast_response():
                     "windDirection": "SW",
                     "icon": "https://api.weather.gov/icons/land/day/sct?size=medium",
                     "shortForecast": "Partly Cloudy",
-                    "detailedForecast": "Partly cloudy, with a high near 41. Southwest wind 5 to 10 mph."
+                    "detailedForecast": "Partly cloudy, with a high near 41. Southwest wind 5 to 10 mph.",
                 },
                 {
                     "number": 2,
@@ -173,7 +167,7 @@ def sample_forecast_response():
                     "windDirection": "SW",
                     "icon": "https://api.weather.gov/icons/land/night/clear?size=medium",
                     "shortForecast": "Clear",
-                    "detailedForecast": "Clear, with a low around 28. Southwest wind around 5 mph."
+                    "detailedForecast": "Clear, with a low around 28. Southwest wind around 5 mph.",
                 },
                 {
                     "number": 3,
@@ -188,7 +182,7 @@ def sample_forecast_response():
                     "windDirection": "W",
                     "icon": "https://api.weather.gov/icons/land/day/few?size=medium",
                     "shortForecast": "Sunny",
-                    "detailedForecast": "Sunny, with a high near 38. West wind 5 to 10 mph."
+                    "detailedForecast": "Sunny, with a high near 38. West wind 5 to 10 mph.",
                 },
                 {
                     "number": 4,
@@ -203,7 +197,7 @@ def sample_forecast_response():
                     "windDirection": "W",
                     "icon": "https://api.weather.gov/icons/land/night/clear?size=medium",
                     "shortForecast": "Clear",
-                    "detailedForecast": "Clear, with a low around 25. West wind around 5 mph."
+                    "detailedForecast": "Clear, with a low around 25. West wind around 5 mph.",
                 },
                 {
                     "number": 5,
@@ -218,8 +212,8 @@ def sample_forecast_response():
                     "windDirection": "SW",
                     "icon": "https://api.weather.gov/icons/land/day/sct?size=medium",
                     "shortForecast": "Partly Cloudy",
-                    "detailedForecast": "Partly cloudy, with a high near 42. Southwest wind 5 to 10 mph."
-                }
+                    "detailedForecast": "Partly cloudy, with a high near 42. Southwest wind 5 to 10 mph.",
+                },
             ]
         }
     }
@@ -235,24 +229,21 @@ def sample_weather_alerts_response():
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
-                    "coordinates": [[
-                        [-74.0059, 40.7128],
-                        [-74.0059, 40.8000],
-                        [-73.9000, 40.8000],
-                        [-73.9000, 40.7128],
-                        [-74.0059, 40.7128]
-                    ]]
+                    "coordinates": [
+                        [
+                            [-74.0059, 40.7128],
+                            [-74.0059, 40.8000],
+                            [-73.9000, 40.8000],
+                            [-73.9000, 40.7128],
+                            [-74.0059, 40.7128],
+                        ]
+                    ],
                 },
                 "properties": {
                     "id": "urn:oid:2.49.0.1.840.0.12345",
                     "areaDesc": "New York County",
-                    "geocode": {
-                        "FIPS6": ["036061"],
-                        "UGC": ["NYZ072"]
-                    },
-                    "affectedZones": [
-                        "https://api.weather.gov/zones/forecast/NYZ072"
-                    ],
+                    "geocode": {"FIPS6": ["036061"], "UGC": ["NYZ072"]},
+                    "affectedZones": ["https://api.weather.gov/zones/forecast/NYZ072"],
                     "references": [],
                     "sent": "2024-01-16T00:00:00-05:00",
                     "effective": "2024-01-16T00:00:00-05:00",
@@ -270,8 +261,8 @@ def sample_weather_alerts_response():
                     "senderName": "NWS New York NY",
                     "headline": "Winter Storm Warning issued January 16 at 12:00AM EST until January 17 at 12:00PM EST by NWS New York NY",
                     "description": "Heavy snow expected. Total snow accumulations of 6 to 10 inches possible.",
-                    "instruction": "Travel could be very difficult. The hazardous conditions could impact the evening commute."
-                }
+                    "instruction": "Travel could be very difficult. The hazardous conditions could impact the evening commute.",
+                },
             }
         ]
     }
@@ -286,59 +277,64 @@ def sample_hourly_forecast_response():
                 "values": [
                     {"validTime": "2024-01-15T13:00:00+00:00", "value": 6.0},
                     {"validTime": "2024-01-15T14:00:00+00:00", "value": 5.5},
-                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 5.0}
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 5.0},
                 ]
             },
             "relativeHumidity": {
                 "values": [
                     {"validTime": "2024-01-15T13:00:00+00:00", "value": 60},
                     {"validTime": "2024-01-15T14:00:00+00:00", "value": 62},
-                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 65}
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 65},
                 ]
             },
             "windSpeed": {
                 "values": [
                     {"validTime": "2024-01-15T13:00:00+00:00", "value": 15.0},
                     {"validTime": "2024-01-15T14:00:00+00:00", "value": 14.0},
-                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 13.0}
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 13.0},
                 ]
             },
             "windDirection": {
                 "values": [
                     {"validTime": "2024-01-15T13:00:00+00:00", "value": 225},
                     {"validTime": "2024-01-15T14:00:00+00:00", "value": 220},
-                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 215}
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 215},
                 ]
             },
             "probabilityOfPrecipitation": {
                 "values": [
                     {"validTime": "2024-01-15T13:00:00+00:00", "value": 10},
                     {"validTime": "2024-01-15T14:00:00+00:00", "value": 5},
-                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 0}
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 0},
                 ]
-            }
+            },
         }
     }
 
 
 @pytest.fixture
-def mock_weather_client(mock_config, sample_location_search_response, 
-                       sample_current_weather_response, sample_forecast_response,
-                       sample_weather_alerts_response, sample_hourly_forecast_response):
+def mock_weather_client(
+    mock_config,
+    sample_location_search_response,
+    sample_current_weather_response,
+    sample_forecast_response,
+    sample_weather_alerts_response,
+    sample_hourly_forecast_response,
+):
     """Create a mock NationalWeatherServiceClient with predefined responses"""
     client = AsyncMock(spec=NationalWeatherServiceClient)
-    
+
     # Mock configuration
     client.config = mock_config
-    
+
     # Mock context manager methods
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
-    
+
     # Mock API methods
     client.search_locations = AsyncMock(return_value=sample_location_search_response)
     client.get_location_key = AsyncMock(return_value="40.7128,-74.0060")
-    
+
     # Mock current weather with proper CurrentWeather object
     mock_current_weather = CurrentWeather(
         temperature=5.0,
@@ -352,10 +348,10 @@ def mock_weather_client(mock_config, sample_location_search_response,
         weather_text="Partly Cloudy",
         weather_icon=3,
         precipitation=0.0,
-        local_time=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        local_time=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
     )
     client.get_current_weather = AsyncMock(return_value=mock_current_weather)
-    
+
     # Mock forecast with proper WeatherForecast objects
     mock_forecast = [
         WeatherForecast(
@@ -368,11 +364,11 @@ def mock_weather_client(mock_config, sample_location_search_response,
             day_precipitation_probability=0,
             night_weather_text="Clear",
             night_weather_icon=33,
-            night_precipitation_probability=0
+            night_precipitation_probability=0,
         )
     ]
     client.get_5day_forecast = AsyncMock(return_value=mock_forecast)
-    
+
     # Mock alerts with proper WeatherAlert objects
     mock_alerts = [
         WeatherAlert(
@@ -383,16 +379,20 @@ def mock_weather_client(mock_config, sample_location_search_response,
             category="meteorological",
             start_time=datetime(2024, 1, 16, 0, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2024, 1, 17, 12, 0, 0, tzinfo=timezone.utc),
-            areas=["New York County"]
+            areas=["New York County"],
         )
     ]
     client.get_weather_alerts = AsyncMock(return_value=mock_alerts)
-    
+
     # Mock other methods
     client.get_hourly_forecast = AsyncMock(return_value=sample_hourly_forecast_response)
-    client.get_indices = AsyncMock(return_value={"airquality": {"value": 45, "category": "good"}})
-    client.get_historical_weather = AsyncMock(return_value=[{"date": "2024-01-10", "temperature": 3.0}])
-    
+    client.get_indices = AsyncMock(
+        return_value={"airquality": {"value": 45, "category": "good"}}
+    )
+    client.get_historical_weather = AsyncMock(
+        return_value=[{"date": "2024-01-10", "temperature": 3.0}]
+    )
+
     return client
 
 
@@ -400,7 +400,7 @@ def mock_weather_client(mock_config, sample_location_search_response,
 def mock_fastmcp_server():
     """Create a mock FastMCP server for testing"""
     from fastmcp import FastMCP
-    
+
     server = MagicMock(spec=FastMCP)
     server.run = AsyncMock()
     return server
@@ -409,9 +409,6 @@ def mock_fastmcp_server():
 @pytest.fixture
 async def mock_server_environment(mock_config, mock_weather_client):
     """Set up a complete mock environment for server testing"""
-    with patch('main.weather_client', mock_weather_client):
-        with patch('weather_mcp.config.get_config', return_value=mock_config):
-            yield {
-                'config': mock_config,
-                'weather_client': mock_weather_client
-            } 
+    with patch("main.weather_client", mock_weather_client):
+        with patch("weather_mcp.config.get_config", return_value=mock_config):
+            yield {"config": mock_config, "weather_client": mock_weather_client}
