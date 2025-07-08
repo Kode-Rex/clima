@@ -46,11 +46,11 @@ class ForecastQuery(BaseModel):
     metric: bool = Field(True, description="Use metric units (Celsius)")
 
 
-@mcp.tool()
-async def search_locations(query: LocationQuery) -> dict:
-    """Search for weather locations by name or ZIP code"""
+# Implementation functions for testing
+async def _search_locations_impl(query: str, language: str = "en-us") -> dict:
+    """Implementation function for search_locations"""
     try:
-        results = await weather_client.search_locations(query.query, query.language)
+        results = await weather_client.search_locations(query, language)
         return {
             "success": True,
             "locations": results,
@@ -61,11 +61,10 @@ async def search_locations(query: LocationQuery) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_current_weather(location: LocationKey) -> dict:
-    """Get current weather conditions for a location"""
+async def _get_current_weather_impl(location_key: str, details: bool = True) -> dict:
+    """Implementation function for get_current_weather"""
     try:
-        weather = await weather_client.get_current_weather(location.location_key, location.details)
+        weather = await weather_client.get_current_weather(location_key, details)
         return {
             "success": True,
             "weather": {
@@ -88,11 +87,10 @@ async def get_current_weather(location: LocationKey) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_5day_forecast(forecast: ForecastQuery) -> dict:
-    """Get 5-day weather forecast for a location"""
+async def _get_5day_forecast_impl(location_key: str, metric: bool = True) -> dict:
+    """Implementation function for get_5day_forecast"""
     try:
-        forecasts = await weather_client.get_5day_forecast(forecast.location_key, forecast.metric)
+        forecasts = await weather_client.get_5day_forecast(location_key, metric)
         return {
             "success": True,
             "forecasts": [
@@ -117,11 +115,10 @@ async def get_5day_forecast(forecast: ForecastQuery) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_weather_alerts(location: LocationKey) -> dict:
-    """Get weather alerts for a location"""
+async def _get_weather_alerts_impl(location_key: str) -> dict:
+    """Implementation function for get_weather_alerts"""
     try:
-        alerts = await weather_client.get_weather_alerts(location.location_key)
+        alerts = await weather_client.get_weather_alerts(location_key)
         return {
             "success": True,
             "alerts": [
@@ -144,14 +141,13 @@ async def get_weather_alerts(location: LocationKey) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_location_weather(query: LocationQuery) -> dict:
-    """Get current weather by searching for a location first"""
+async def _get_location_weather_impl(query: str, language: str = "en-us") -> dict:
+    """Implementation function for get_location_weather"""
     try:
         # Search for location
-        locations = await weather_client.search_locations(query.query, query.language)
+        locations = await weather_client.search_locations(query, language)
         if not locations:
-            return {"success": False, "error": f"No locations found for '{query.query}'"}
+            return {"success": False, "error": f"No locations found for '{query}'"}
         
         # Get weather for first location
         location_key = locations[0]["Key"]
@@ -180,14 +176,13 @@ async def get_location_weather(query: LocationQuery) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_location_forecast(query: LocationQuery) -> dict:
-    """Get 5-day forecast by searching for a location first"""
+async def _get_location_forecast_impl(query: str, language: str = "en-us") -> dict:
+    """Implementation function for get_location_forecast"""
     try:
         # Search for location
-        locations = await weather_client.search_locations(query.query, query.language)
+        locations = await weather_client.search_locations(query, language)
         if not locations:
-            return {"success": False, "error": f"No locations found for '{query.query}'"}
+            return {"success": False, "error": f"No locations found for '{query}'"}
         
         # Get forecast for first location
         location_key = locations[0]["Key"]
@@ -218,14 +213,13 @@ async def get_location_forecast(query: LocationQuery) -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_location_alerts(query: LocationQuery) -> dict:
-    """Get weather alerts by searching for a location first"""
+async def _get_location_alerts_impl(query: str, language: str = "en-us") -> dict:
+    """Implementation function for get_location_alerts"""
     try:
         # Search for location
-        locations = await weather_client.search_locations(query.query, query.language)
+        locations = await weather_client.search_locations(query, language)
         if not locations:
-            return {"success": False, "error": f"No locations found for '{query.query}'"}
+            return {"success": False, "error": f"No locations found for '{query}'"}
         
         # Get alerts for first location
         location_key = locations[0]["Key"]
@@ -252,6 +246,48 @@ async def get_location_alerts(query: LocationQuery) -> dict:
     except Exception as e:
         logger.error(f"Location alerts failed: {e}")
         return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def search_locations(query: LocationQuery) -> dict:
+    """Search for weather locations by name or ZIP code"""
+    return await _search_locations_impl(query.query, query.language)
+
+
+@mcp.tool()
+async def get_current_weather(location: LocationKey) -> dict:
+    """Get current weather conditions for a location"""
+    return await _get_current_weather_impl(location.location_key, location.details)
+
+
+@mcp.tool()
+async def get_5day_forecast(forecast: ForecastQuery) -> dict:
+    """Get 5-day weather forecast for a location"""
+    return await _get_5day_forecast_impl(forecast.location_key, forecast.metric)
+
+
+@mcp.tool()
+async def get_weather_alerts(location: LocationKey) -> dict:
+    """Get weather alerts for a location"""
+    return await _get_weather_alerts_impl(location.location_key)
+
+
+@mcp.tool()
+async def get_location_weather(query: LocationQuery) -> dict:
+    """Get current weather by searching for a location first"""
+    return await _get_location_weather_impl(query.query, query.language)
+
+
+@mcp.tool()
+async def get_location_forecast(query: LocationQuery) -> dict:
+    """Get 5-day forecast by searching for a location first"""
+    return await _get_location_forecast_impl(query.query, query.language)
+
+
+@mcp.tool()
+async def get_location_alerts(query: LocationQuery) -> dict:
+    """Get weather alerts by searching for a location first"""
+    return await _get_location_alerts_impl(query.query, query.language)
 
 
 async def test_nws_api():

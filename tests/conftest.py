@@ -8,26 +8,23 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from weather_mcp.config import Config
-from weather_mcp.accuweather import (
-    AccuWeatherClient, 
-    CurrentWeather, 
-    WeatherForecast, 
+from weather_mcp.nws import (
+    NationalWeatherServiceClient,
+    CurrentWeather,
+    WeatherForecast,
     WeatherAlert
 )
 
 
 @pytest.fixture
 def mock_config():
-    """Create a mock configuration for testing"""
+    """Create a mock configuration for testing NWS"""
     # Create config with all values explicitly set to avoid .env file interference
     return Config(
-        accuweather_api_key="test_api_key_12345",
-        accuweather_base_url="https://dataservice.accuweather.com",
-        host="localhost",
+        host="0.0.0.0",  # Use the actual default value
         port=8000,
         log_level="INFO",
         debug=False,
-        log_file=None,
         sse_heartbeat_interval=30,
         sse_max_connections=100,
         cache_ttl_seconds=300,
@@ -37,199 +34,299 @@ def mock_config():
 
 @pytest.fixture
 def sample_location_search_response():
-    """Sample location search response from AccuWeather API"""
+    """Sample location search response from NWS geocoding API"""
     return [
         {
-            "Version": 1,
-            "Key": "349727",
-            "Type": "City",
-            "Rank": 10,
+            "Key": "40.7127753,-74.0059728",
             "LocalizedName": "New York",
-            "EnglishName": "New York",
-            "PrimaryPostalCode": "10001",
-            "Region": {
-                "ID": "NAM",
-                "LocalizedName": "North America",
-                "EnglishName": "North America"
+            "AdministrativeArea": {
+                "LocalizedName": "New York"
             },
             "Country": {
-                "ID": "US",
-                "LocalizedName": "United States",
-                "EnglishName": "United States"
-            },
-            "AdministrativeArea": {
-                "ID": "NY",
-                "LocalizedName": "New York",
-                "EnglishName": "New York",
-                "Level": 1,
-                "LocalizedType": "State",
-                "EnglishType": "State",
-                "CountryID": "US"
-            },
-            "TimeZone": {
-                "Code": "EST",
-                "Name": "America/New_York",
-                "GmtOffset": -5.0,
-                "IsDaylightSaving": False,
-                "NextOffsetChange": "2024-03-10T07:00:00Z"
+                "LocalizedName": "United States"
             },
             "GeoPosition": {
-                "Latitude": 40.759,
-                "Longitude": -73.984,
-                "Elevation": {
-                    "Metric": {"Value": 57, "Unit": "m"},
-                    "Imperial": {"Value": 187, "Unit": "ft"}
-                }
+                "Latitude": 40.7127753,
+                "Longitude": -74.0059728
             },
-            "IsAlias": False,
-            "SupplementalAdminAreas": [
-                {
-                    "Level": 2,
-                    "LocalizedName": "New York",
-                    "EnglishName": "New York"
-                }
-            ],
-            "DataSets": ["AirQualityCurrentConditions", "AirQualityForecasts"]
+            "place_id": 123456,
+            "licence": "Data OpenStreetMap",
+            "osm_type": "relation",
+            "osm_id": 175905,
+            "lat": "40.7127753",
+            "lon": "-74.0059728",
+            "display_name": "New York, New York County, New York, United States",
+            "address": {
+                "city": "New York",
+                "county": "New York County",
+                "state": "New York",
+                "country": "United States",
+                "postcode": "10001"
+            },
+            "boundingbox": ["40.4773991", "40.9175771", "-74.2590879", "-73.7004845"]
         }
     ]
 
 
 @pytest.fixture
 def sample_current_weather_response():
-    """Sample current weather response from AccuWeather API"""
-    return [
-        {
-            "LocalObservationDateTime": "2024-01-15T12:00:00-05:00",
-            "EpochTime": 1705339200,
-            "WeatherText": "Partly sunny",
-            "WeatherIcon": 3,
-            "HasPrecipitation": False,
-            "PrecipitationType": None,
-            "IsDayTime": True,
-            "Temperature": {
-                "Metric": {"Value": 5.0, "Unit": "C", "UnitType": 17},
-                "Imperial": {"Value": 41.0, "Unit": "F", "UnitType": 18}
+    """Sample current weather response from NWS observations API"""
+    return {
+        "properties": {
+            "timestamp": "2024-01-15T17:00:00+00:00",
+            "textDescription": "Partly Cloudy",
+            "temperature": {
+                "value": 5.0,
+                "unitCode": "wmoUnit:degC",
+                "qualityControl": "V"
             },
-            "MobileLink": "http://www.accuweather.com/en/us/new-york-ny/10001/current-weather/349727",
-            "Link": "http://www.accuweather.com/en/us/new-york-ny/10001/current-weather/349727",
-            "RelativeHumidity": 65,
-            "Wind": {
-                "Direction": {"Degrees": 225, "Localized": "SW", "English": "SW"},
-                "Speed": {"Metric": {"Value": 15.0, "Unit": "km/h"}, "Imperial": {"Value": 9.3, "Unit": "mi/h"}}
+            "dewpoint": {
+                "value": -2.0,
+                "unitCode": "wmoUnit:degC",
+                "qualityControl": "V"
             },
-            "Pressure": {
-                "Metric": {"Value": 1015.0, "Unit": "mb"}, 
-                "Imperial": {"Value": 29.97, "Unit": "inHg"}
+            "windDirection": {
+                "value": 225,
+                "unitCode": "wmoUnit:degree_(angle)",
+                "qualityControl": "V"
             },
-            "Visibility": {
-                "Metric": {"Value": 16.0, "Unit": "km"}, 
-                "Imperial": {"Value": 10.0, "Unit": "mi"}
+            "windSpeed": {
+                "value": 15.0,
+                "unitCode": "wmoUnit:km_h-1",
+                "qualityControl": "V"
             },
-            "UVIndex": 2,
-            "PrecipitationSummary": {
-                "Precipitation": {"Metric": {"Value": 0.0, "Unit": "mm"}}
+            "windGust": {
+                "value": None,
+                "unitCode": "wmoUnit:km_h-1",
+                "qualityControl": "Z"
+            },
+            "barometricPressure": {
+                "value": 101500,
+                "unitCode": "wmoUnit:Pa",
+                "qualityControl": "V"
+            },
+            "seaLevelPressure": {
+                "value": 101500,
+                "unitCode": "wmoUnit:Pa",
+                "qualityControl": "V"
+            },
+            "visibility": {
+                "value": 16000,
+                "unitCode": "wmoUnit:m",
+                "qualityControl": "V"
+            },
+            "relativeHumidity": {
+                "value": 65,
+                "unitCode": "wmoUnit:percent",
+                "qualityControl": "V"
+            },
+            "windChill": {
+                "value": None,
+                "unitCode": "wmoUnit:degC",
+                "qualityControl": "Z"
+            },
+            "heatIndex": {
+                "value": None,
+                "unitCode": "wmoUnit:degC",
+                "qualityControl": "Z"
+            },
+            "precipitationLastHour": {
+                "value": 0,
+                "unitCode": "wmoUnit:mm",
+                "qualityControl": "V"
             }
         }
-    ]
+    }
 
 
 @pytest.fixture
 def sample_forecast_response():
-    """Sample 5-day forecast response from AccuWeather API"""
+    """Sample 5-day forecast response from NWS forecast API"""
     return {
-        "Headline": {
-            "EffectiveDate": "2024-01-16T07:00:00-05:00",
-            "EffectiveEpochDate": 1705406400,
-            "Severity": 4,
-            "Text": "Expect cold conditions Tuesday",
-            "Category": "cold",
-            "EndDate": "2024-01-16T19:00:00-05:00",
-            "EndEpochDate": 1705449600,
-            "MobileLink": "http://www.accuweather.com/en/us/new-york-ny/10001/daily-weather-forecast/349727",
-            "Link": "http://www.accuweather.com/en/us/new-york-ny/10001/daily-weather-forecast/349727"
-        },
-        "DailyForecasts": [
+        "properties": {
+            "periods": [
+                {
+                    "number": 1,
+                    "name": "Today",
+                    "startTime": "2024-01-15T06:00:00-05:00",
+                    "endTime": "2024-01-15T18:00:00-05:00",
+                    "isDaytime": True,
+                    "temperature": 41,
+                    "temperatureUnit": "F",
+                    "temperatureTrend": None,
+                    "windSpeed": "5 to 10 mph",
+                    "windDirection": "SW",
+                    "icon": "https://api.weather.gov/icons/land/day/sct?size=medium",
+                    "shortForecast": "Partly Cloudy",
+                    "detailedForecast": "Partly cloudy, with a high near 41. Southwest wind 5 to 10 mph."
+                },
+                {
+                    "number": 2,
+                    "name": "Tonight",
+                    "startTime": "2024-01-15T18:00:00-05:00",
+                    "endTime": "2024-01-16T06:00:00-05:00",
+                    "isDaytime": False,
+                    "temperature": 28,
+                    "temperatureUnit": "F",
+                    "temperatureTrend": None,
+                    "windSpeed": "5 mph",
+                    "windDirection": "SW",
+                    "icon": "https://api.weather.gov/icons/land/night/clear?size=medium",
+                    "shortForecast": "Clear",
+                    "detailedForecast": "Clear, with a low around 28. Southwest wind around 5 mph."
+                },
+                {
+                    "number": 3,
+                    "name": "Tuesday",
+                    "startTime": "2024-01-16T06:00:00-05:00",
+                    "endTime": "2024-01-16T18:00:00-05:00",
+                    "isDaytime": True,
+                    "temperature": 38,
+                    "temperatureUnit": "F",
+                    "temperatureTrend": None,
+                    "windSpeed": "5 to 10 mph",
+                    "windDirection": "W",
+                    "icon": "https://api.weather.gov/icons/land/day/few?size=medium",
+                    "shortForecast": "Sunny",
+                    "detailedForecast": "Sunny, with a high near 38. West wind 5 to 10 mph."
+                },
+                {
+                    "number": 4,
+                    "name": "Tuesday Night",
+                    "startTime": "2024-01-16T18:00:00-05:00",
+                    "endTime": "2024-01-17T06:00:00-05:00",
+                    "isDaytime": False,
+                    "temperature": 25,
+                    "temperatureUnit": "F",
+                    "temperatureTrend": None,
+                    "windSpeed": "5 mph",
+                    "windDirection": "W",
+                    "icon": "https://api.weather.gov/icons/land/night/clear?size=medium",
+                    "shortForecast": "Clear",
+                    "detailedForecast": "Clear, with a low around 25. West wind around 5 mph."
+                },
+                {
+                    "number": 5,
+                    "name": "Wednesday",
+                    "startTime": "2024-01-17T06:00:00-05:00",
+                    "endTime": "2024-01-17T18:00:00-05:00",
+                    "isDaytime": True,
+                    "temperature": 42,
+                    "temperatureUnit": "F",
+                    "temperatureTrend": None,
+                    "windSpeed": "5 to 10 mph",
+                    "windDirection": "SW",
+                    "icon": "https://api.weather.gov/icons/land/day/sct?size=medium",
+                    "shortForecast": "Partly Cloudy",
+                    "detailedForecast": "Partly cloudy, with a high near 42. Southwest wind 5 to 10 mph."
+                }
+            ]
+        }
+    }
+
+
+@pytest.fixture
+def sample_weather_alerts_response():
+    """Sample weather alerts response from NWS alerts API"""
+    return {
+        "features": [
             {
-                "Date": "2024-01-15T07:00:00-05:00",
-                "EpochDate": 1705320000,
-                "Temperature": {
-                    "Minimum": {"Value": -2.0, "Unit": "C", "UnitType": 17},
-                    "Maximum": {"Value": 5.0, "Unit": "C", "UnitType": 17}
+                "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.12345",
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [-74.0059, 40.7128],
+                        [-74.0059, 40.8000],
+                        [-73.9000, 40.8000],
+                        [-73.9000, 40.7128],
+                        [-74.0059, 40.7128]
+                    ]]
                 },
-                "Day": {
-                    "Icon": 3,
-                    "IconPhrase": "Partly sunny",
-                    "HasPrecipitation": False
-                },
-                "Night": {
-                    "Icon": 33,
-                    "IconPhrase": "Clear",
-                    "HasPrecipitation": False
-                },
-                "Sources": ["AccuWeather"],
-                "MobileLink": "http://www.accuweather.com/en/us/new-york-ny/10001/daily-weather-forecast/349727",
-                "Link": "http://www.accuweather.com/en/us/new-york-ny/10001/daily-weather-forecast/349727"
+                "properties": {
+                    "id": "urn:oid:2.49.0.1.840.0.12345",
+                    "areaDesc": "New York County",
+                    "geocode": {
+                        "FIPS6": ["036061"],
+                        "UGC": ["NYZ072"]
+                    },
+                    "affectedZones": [
+                        "https://api.weather.gov/zones/forecast/NYZ072"
+                    ],
+                    "references": [],
+                    "sent": "2024-01-16T00:00:00-05:00",
+                    "effective": "2024-01-16T00:00:00-05:00",
+                    "onset": "2024-01-16T00:00:00-05:00",
+                    "expires": "2024-01-17T12:00:00-05:00",
+                    "ends": "2024-01-17T12:00:00-05:00",
+                    "status": "Actual",
+                    "messageType": "Alert",
+                    "category": "Met",
+                    "severity": "Moderate",
+                    "certainty": "Likely",
+                    "urgency": "Expected",
+                    "event": "Winter Storm Warning",
+                    "sender": "w-nws.webmaster@noaa.gov",
+                    "senderName": "NWS New York NY",
+                    "headline": "Winter Storm Warning issued January 16 at 12:00AM EST until January 17 at 12:00PM EST by NWS New York NY",
+                    "description": "Heavy snow expected. Total snow accumulations of 6 to 10 inches possible.",
+                    "instruction": "Travel could be very difficult. The hazardous conditions could impact the evening commute."
+                }
             }
         ]
     }
 
 
 @pytest.fixture
-def sample_weather_alerts_response():
-    """Sample weather alerts response from AccuWeather API"""
-    return [
-        {
-            "AlertID": "12345",
-            "Title": "Winter Storm Warning",
-            "Description": "Heavy snow expected. Total snow accumulations of 6 to 10 inches possible.",
-            "Priority": 2,
-            "Class": "meteorological",
-            "Classification": "Moderate",
-            "StartTime": "2024-01-16T00:00:00-05:00",
-            "EndTime": "2024-01-17T12:00:00-05:00",
-            "Source": "NWS",
-            "SourceId": "2.49.0.1.840.0.1b9fcec98e2e00423e7b6e37ad2b55b7a9bb69e0",
-            "Areas": [
-                {
-                    "Text": "New York County",
-                    "StartTime": "2024-01-16T00:00:00-05:00",
-                    "EndTime": "2024-01-17T12:00:00-05:00"
-                }
-            ]
-        }
-    ]
-
-
-@pytest.fixture
 def sample_hourly_forecast_response():
-    """Sample hourly forecast response from AccuWeather API"""
-    return [
-        {
-            "DateTime": "2024-01-15T13:00:00-05:00",
-            "EpochDateTime": 1705342800,
-            "WeatherIcon": 3,
-            "IconPhrase": "Partly sunny",
-            "HasPrecipitation": False,
-            "Temperature": {"Value": 6.0, "Unit": "C", "UnitType": 17},
-            "RealFeelTemperature": {"Value": 2.0, "Unit": "C", "UnitType": 17},
-            "Wind": {
-                "Speed": {"Value": 15.0, "Unit": "km/h", "UnitType": 7},
-                "Direction": {"Degrees": 225, "Localized": "SW", "English": "SW"}
+    """Sample hourly forecast response from NWS gridpoints API"""
+    return {
+        "properties": {
+            "temperature": {
+                "values": [
+                    {"validTime": "2024-01-15T13:00:00+00:00", "value": 6.0},
+                    {"validTime": "2024-01-15T14:00:00+00:00", "value": 5.5},
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 5.0}
+                ]
             },
-            "RelativeHumidity": 60,
-            "Visibility": {"Value": 16.0, "Unit": "km", "UnitType": 6},
-            "UVIndex": 2,
-            "PrecipitationProbability": 10
+            "relativeHumidity": {
+                "values": [
+                    {"validTime": "2024-01-15T13:00:00+00:00", "value": 60},
+                    {"validTime": "2024-01-15T14:00:00+00:00", "value": 62},
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 65}
+                ]
+            },
+            "windSpeed": {
+                "values": [
+                    {"validTime": "2024-01-15T13:00:00+00:00", "value": 15.0},
+                    {"validTime": "2024-01-15T14:00:00+00:00", "value": 14.0},
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 13.0}
+                ]
+            },
+            "windDirection": {
+                "values": [
+                    {"validTime": "2024-01-15T13:00:00+00:00", "value": 225},
+                    {"validTime": "2024-01-15T14:00:00+00:00", "value": 220},
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 215}
+                ]
+            },
+            "probabilityOfPrecipitation": {
+                "values": [
+                    {"validTime": "2024-01-15T13:00:00+00:00", "value": 10},
+                    {"validTime": "2024-01-15T14:00:00+00:00", "value": 5},
+                    {"validTime": "2024-01-15T15:00:00+00:00", "value": 0}
+                ]
+            }
         }
-    ]
+    }
 
 
 @pytest.fixture
 def mock_weather_client(mock_config, sample_location_search_response, 
                        sample_current_weather_response, sample_forecast_response,
                        sample_weather_alerts_response, sample_hourly_forecast_response):
-    """Create a mock AccuWeatherClient with predefined responses"""
-    client = AsyncMock(spec=AccuWeatherClient)
+    """Create a mock NationalWeatherServiceClient with predefined responses"""
+    client = AsyncMock(spec=NationalWeatherServiceClient)
     
     # Mock configuration
     client.config = mock_config
@@ -240,12 +337,10 @@ def mock_weather_client(mock_config, sample_location_search_response,
     
     # Mock API methods
     client.search_locations = AsyncMock(return_value=sample_location_search_response)
-    client.get_location_key = AsyncMock(return_value="349727")
+    client.get_location_key = AsyncMock(return_value="40.7128,-74.0060")
     
     # Mock current weather with proper CurrentWeather object
     mock_current_weather = CurrentWeather(
-        location_key="349727",
-        location_name="New York",
         temperature=5.0,
         temperature_unit="C",
         humidity=65,
@@ -254,7 +349,7 @@ def mock_weather_client(mock_config, sample_location_search_response,
         pressure=1015.0,
         visibility=16.0,
         uv_index=2,
-        weather_text="Partly sunny",
+        weather_text="Partly Cloudy",
         weather_icon=3,
         precipitation=0.0,
         local_time=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
@@ -265,16 +360,15 @@ def mock_weather_client(mock_config, sample_location_search_response,
     mock_forecast = [
         WeatherForecast(
             date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=timezone.utc),
-            day_temperature=5.0,
-            night_temperature=-2.0,
-            day_weather_text="Partly sunny",
+            min_temperature=-2.0,
+            max_temperature=5.0,
+            temperature_unit="C",
+            day_weather_text="Partly Cloudy",
+            day_weather_icon=3,
+            day_precipitation_probability=0,
             night_weather_text="Clear",
-            day_icon=3,
-            night_icon=33,
-            precipitation_probability=0,
-            precipitation_amount=0.0,
-            wind_speed=15.0,
-            wind_direction="SW"
+            night_weather_icon=33,
+            night_precipitation_probability=0
         )
     ]
     client.get_5day_forecast = AsyncMock(return_value=mock_forecast)
@@ -315,10 +409,9 @@ def mock_fastmcp_server():
 @pytest.fixture
 async def mock_server_environment(mock_config, mock_weather_client):
     """Set up a complete mock environment for server testing"""
-    with patch('weather_mcp.server.weather_client', mock_weather_client):
-        with patch('weather_mcp.server.get_config', return_value=mock_config):
-            with patch('weather_mcp.server.setup_logging'):
-                yield {
-                    'config': mock_config,
-                    'weather_client': mock_weather_client
-                } 
+    with patch('main.weather_client', mock_weather_client):
+        with patch('weather_mcp.config.get_config', return_value=mock_config):
+            yield {
+                'config': mock_config,
+                'weather_client': mock_weather_client
+            } 
