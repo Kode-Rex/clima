@@ -65,8 +65,24 @@ def run(
         configure_logging()
         logger.info("Starting Weather API Server with SSE (National Weather Service)")
 
-        # Initialize FastMCP with SSE support
-        mcp_server: FastMCP = FastMCP("Weather API Server")
+        # Define CORS middleware for cross-origin SSE connections
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+
+        def add_cors_middleware(app: FastAPI):
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],  # Allow all origins for development
+                allow_credentials=True,
+                allow_methods=["GET", "POST", "OPTIONS"],
+                allow_headers=["*"],
+            )
+            return app
+
+        # Initialize FastMCP with CORS support for SSE
+        mcp_server: FastMCP = FastMCP(
+            "Weather API Server", middleware=[add_cors_middleware]
+        )
 
         # Initialize weather client
         weather_client = NationalWeatherServiceClient()
