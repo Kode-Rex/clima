@@ -107,7 +107,7 @@ def setup_health_endpoints(app: FastAPI):
         try:
             # Get the path to the examples directory
             current_dir = Path(__file__).parent
-            client_path = current_dir.parent / "examples" / "sse_client_real.html"
+            client_path = current_dir.parent / "examples" / "sse_client.html"
 
             if client_path.exists():
                 # Read the HTML content and return it directly

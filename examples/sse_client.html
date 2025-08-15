@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather MCP - FastMCP SSE Client</title>
+    <title>Weather MCP - Real FastMCP SSE Client</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -29,6 +29,11 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
+        .connection-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
         .input-group {
             margin-bottom: 20px;
         }
@@ -39,12 +44,14 @@
             color: #555;
         }
         input, select, button {
-            width: 100%;
             padding: 12px;
             border: 2px solid #e1e5e9;
             border-radius: 6px;
             font-size: 16px;
             transition: border-color 0.3s ease;
+        }
+        input, select {
+            width: 100%;
         }
         input:focus, select:focus {
             outline: none;
@@ -56,7 +63,6 @@
             border: none;
             cursor: pointer;
             font-weight: 600;
-            margin-top: 10px;
             transition: transform 0.2s ease;
         }
         button:hover {
@@ -69,9 +75,10 @@
         }
         .status {
             padding: 15px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin: 15px 0;
-            font-weight: 500;
+            font-weight: 600;
+            text-align: center;
         }
         .status.connected {
             background-color: #d4edda;
@@ -88,148 +95,101 @@
             color: #856404;
             border: 1px solid #ffeaa7;
         }
-        .weather-data {
-            background: #f8f9fc;
-            padding: 20px;
-            border-radius: 6px;
-            margin: 15px 0;
-            border-left: 4px solid #667eea;
-        }
-        .weather-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .weather-item {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .weather-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }
-        .weather-label {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
         .logs {
-            background: #1a1a1a;
-            color: #00ff00;
-            padding: 20px;
-            border-radius: 6px;
             max-height: 400px;
             overflow-y: auto;
-            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
         .log-entry {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
         }
-        .timestamp {
-            color: #888;
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.info { color: #17a2b8; }
+        .log-entry.warning { color: #ffc107; }
+        .weather-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
         }
-        .error {
-            color: #ff6b6b;
-        }
-        .success {
-            color: #51cf66;
-        }
-        .info {
-            color: #74c0fc;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .button-group button {
-            flex: 1;
-        }
-        .demo-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .demo-buttons button {
+        .weather-display pre {
             margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .connection-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🌤️ Weather MCP - FastMCP SSE Client</h1>
-        <p>Test your FastMCP weather server with SSE transport</p>
+        <h1>🌤️ Weather MCP - Real FastMCP SSE Client</h1>
+        <p>Connect to your FastMCP weather server via Server-Sent Events</p>
     </div>
 
     <div class="container">
-        <h2>FastMCP Connection</h2>
+        <h2>🔗 Server Connection</h2>
 
         <div class="input-group">
             <label for="serverUrl">FastMCP Server URL:</label>
-            <input type="text" id="serverUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+            <input type="text" id="serverUrl" value="http://localhost:8000/sse" placeholder="http://localhost:8000/sse">
         </div>
 
         <div class="input-group">
-            <label for="toolName">Weather Tool:</label>
-            <select id="toolName">
-                <option value="get_weather">Get Current Weather</option>
-                <option value="get_forecast">Get Weather Forecast</option>
-                <option value="get_alerts">Get Weather Alerts</option>
-                <option value="search_locations">Search Locations</option>
-            </select>
+            <label for="zipCode">ZIP Code:</label>
+            <input type="text" id="zipCode" value="10001" placeholder="Enter ZIP code (e.g., 10001, 90210)" maxlength="10">
         </div>
 
-        <div class="input-group">
-            <label for="zipCode">ZIP Code / Location Query:</label>
-            <input type="text" id="zipCode" value="10001" placeholder="10001 or New York">
-        </div>
-
-        <div class="input-group" id="daysGroup" style="display: none;">
-            <label for="days">Forecast Days:</label>
-            <input type="number" id="days" value="5" min="1" max="7">
-        </div>
-
-        <div class="button-group">
-            <button onclick="callWeatherTool()" id="callButton">📡 Call Weather Tool</button>
+        <div class="connection-controls">
+            <button id="connectBtn" onclick="connect()">🔌 Connect to Server</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>❌ Disconnect</button>
             <button onclick="clearLogs()">🗑️ Clear Logs</button>
         </div>
 
-        <div class="demo-buttons">
-            <button onclick="demoWeather()">🌡️ Demo NYC Weather</button>
-            <button onclick="demoForecast()">📅 Demo 5-day Forecast</button>
-            <button onclick="demoAlerts()">⚠️ Demo Weather Alerts</button>
-            <button onclick="demoSearch()">🔍 Demo Location Search</button>
-        </div>
-
         <div id="connectionStatus" class="status disconnected">
-            🔴 Not Connected - Ready to test FastMCP tools
+            🔴 Not Connected - Click Connect to start
+        </div>
+
+        <div class="connection-info" id="connectionInfo" style="display: none;">
+            Connection Details: <span id="connectionDetails"></span>
+        </div>
+    </div>
+
+
+
+    <div class="container">
+        <h2>📊 Response Data</h2>
+        <div id="responseDisplay" class="weather-display" style="display: none;">
+            <pre id="responseContent"></pre>
         </div>
     </div>
 
     <div class="container">
-        <h2>Weather Data</h2>
-        <div id="weatherData" class="weather-data" style="display: none;">
-            <div id="weatherContent"></div>
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>Response Logs</h2>
+        <h2>📝 Real-Time Logs</h2>
         <div id="logs" class="logs">
-            <div class="log-entry info">Ready to test FastMCP weather tools...</div>
+            <div class="log-entry info">[Ready] FastMCP SSE Client initialized - Click Connect to start</div>
         </div>
     </div>
 
     <script>
-        let currentRequest = null;
+        let eventSource = null;
+        let isConnected = false;
 
         // Show/hide forecast days input based on selected tool
         document.getElementById('toolName').addEventListener('change', function() {
@@ -241,303 +201,241 @@
             }
         });
 
+        function updateStatus(message, status) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${status}`;
+        }
+
         function log(message, type = 'info') {
             const logs = document.getElementById('logs');
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
             logEntry.className = `log-entry ${type}`;
-            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
             logs.appendChild(logEntry);
             logs.scrollTop = logs.scrollHeight;
         }
 
-        function updateStatus(message, type) {
-            const status = document.getElementById('connectionStatus');
-            status.className = `status ${type}`;
-            status.innerHTML = message;
-        }
-
-        async function callWeatherTool() {
-            const serverUrl = document.getElementById('serverUrl').value;
-            const toolName = document.getElementById('toolName').value;
-            const zipCode = document.getElementById('zipCode').value.trim();
-            const days = document.getElementById('days').value;
-            const button = document.getElementById('callButton');
-
-            if (!zipCode) {
-                log('Please enter a ZIP code or location', 'error');
+        function connect() {
+            if (isConnected) {
+                log('Already connected to server', 'warning');
                 return;
             }
 
-            button.disabled = true;
-            button.textContent = '⏳ Calling Tool...';
-            updateStatus('🟡 Calling FastMCP tool...', 'connecting');
+            const baseUrl = document.getElementById('serverUrl').value.trim();
+            const zipCode = document.getElementById('zipCode').value.trim();
+
+            if (!baseUrl) {
+                log('Please enter a server URL', 'error');
+                return;
+            }
+
+            if (!zipCode) {
+                log('Please enter a ZIP code', 'error');
+                return;
+            }
+
+            // Append ZIP code as parameter to the SSE URL
+            const serverUrl = `${baseUrl}?zip_code=${encodeURIComponent(zipCode)}`;
+
+            updateStatus('🟡 Connecting to weather stream...', 'connecting');
+            log(`Attempting to connect to: ${baseUrl} with ZIP: ${zipCode}`, 'info');
 
             try {
-                // Prepare the request based on tool
-                let requestBody;
+                eventSource = new EventSource(serverUrl);
 
-                switch(toolName) {
-                    case 'get_weather':
-                        requestBody = {
-                            method: 'tools/call',
-                            params: {
-                                name: 'get_weather',
-                                arguments: { zip_code: zipCode }
-                            }
-                        };
-                        break;
-                    case 'get_forecast':
-                        requestBody = {
-                            method: 'tools/call',
-                            params: {
-                                name: 'get_forecast',
-                                arguments: { zip_code: zipCode, days: parseInt(days) }
-                            }
-                        };
-                        break;
-                    case 'get_alerts':
-                        requestBody = {
-                            method: 'tools/call',
-                            params: {
-                                name: 'get_alerts',
-                                arguments: { zip_code: zipCode }
-                            }
-                        };
-                        break;
-                    case 'search_locations':
-                        requestBody = {
-                            method: 'tools/call',
-                            params: {
-                                name: 'search_locations',
-                                arguments: { query: zipCode }
-                            }
-                        };
-                        break;
-                }
+                eventSource.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus('🟢 Connected to FastMCP server', 'connected');
+                    log('✅ Successfully connected to FastMCP server', 'success');
 
-                log(`📡 Calling ${toolName} with ${zipCode}...`, 'info');
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
 
-                // Note: This is a mock implementation since we can't directly call FastMCP from browser
-                // In a real implementation, you'd have a backend proxy or use FastMCP client libraries
+                    // Clear previous response data for fresh start
+                    const responseContent = document.getElementById('responseContent');
+                    responseContent.textContent = '';
 
-                // Simulate the API call for demonstration
-                await simulateWeatherCall(toolName, zipCode, days);
+                    const connectionInfo = document.getElementById('connectionInfo');
+                    const connectionDetails = document.getElementById('connectionDetails');
+                    connectionInfo.style.display = 'block';
+                    connectionDetails.textContent = `Connected to ${serverUrl}`;
+                };
+
+                eventSource.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+
+                        // Skip heartbeat logging
+                        if (message.type === 'heartbeat') return;
+
+                        log(`📨 ${message.type}: ${message.message || 'Data received'}`, 'info');
+
+                        // Handle different message types
+                        switch (message.type) {
+                            case 'connection':
+                                displayResponse(JSON.stringify(message, null, 2), '🔗 Connection Status');
+                                break;
+                            case 'status':
+                                updateStatus(`🔄 ${message.message}`, 'loading');
+                                break;
+                            case 'location':
+                                displayResponse(JSON.stringify(message.data, null, 2), '📍 Location Info');
+                                break;
+                            case 'current_weather':
+                                displayResponse(JSON.stringify(message.data, null, 2), '🌡️ Current Weather');
+                                break;
+                            case 'forecast':
+                                displayResponse(JSON.stringify(message.data, null, 2), '📅 5-Day Forecast');
+                                break;
+                            case 'alerts':
+                                displayResponse(JSON.stringify(message.data, null, 2), `⚠️ Weather Alerts (${message.count})`);
+                                break;
+                            case 'complete':
+                                updateStatus(`✅ ${message.message}`, 'connected');
+                                log('🎉 All weather data loaded successfully!', 'success');
+                                break;
+                            case 'error':
+                                log(`❌ Error: ${message.message}`, 'error');
+                                displayResponse(JSON.stringify(message, null, 2), '❌ Error');
+                                break;
+                            default:
+                                displayResponse(JSON.stringify(message, null, 2), '📡 SSE Message');
+                        }
+                    } catch (e) {
+                        log(`❌ Failed to parse message: ${event.data}`, 'error');
+                        displayResponse(event.data, '📡 Raw SSE Message');
+                    }
+                };
+
+                eventSource.onerror = function(event) {
+                    log('❌ Connection error occurred', 'error');
+                    if (isConnected) {
+                        updateStatus('🔴 Connection lost', 'disconnected');
+                        disconnect();
+                    } else {
+                        updateStatus('🔴 Failed to connect', 'disconnected');
+                        eventSource.close();
+                        resetConnectionState();
+                    }
+                };
+
+                // Listen for specific FastMCP message types
+                eventSource.addEventListener('tool_response', function(event) {
+                    log('🔧 Received tool response', 'success');
+                    displayResponse(event.data, 'Tool Response');
+                });
+
+                eventSource.addEventListener('error', function(event) {
+                    log(`❌ Server error: ${event.data}`, 'error');
+                    displayResponse(event.data, 'Error Response');
+                });
 
             } catch (error) {
-                log(`❌ Error: ${error.message}`, 'error');
-                updateStatus('🔴 Error occurred', 'disconnected');
-            } finally {
-                button.disabled = false;
-                button.textContent = '📡 Call Weather Tool';
+                log(`❌ Failed to connect: ${error.message}`, 'error');
+                updateStatus('🔴 Connection failed', 'disconnected');
             }
         }
 
-        async function simulateWeatherCall(toolName, zipCode, days) {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            let mockResponse;
-
-            switch(toolName) {
-                case 'get_weather':
-                    mockResponse = {
-                        location: "New York, NY",
-                        temperature: 72,
-                        temperature_unit: "F",
-                        weather_text: "Partly Cloudy",
-                        humidity: 65,
-                        wind_speed: 8,
-                        wind_direction: "NW",
-                        pressure: 30.15,
-                        visibility: 10,
-                        uv_index: 5,
-                        precipitation: 0
-                    };
-                    break;
-                case 'get_forecast':
-                    mockResponse = {
-                        location: "New York, NY",
-                        forecast: [
-                            {
-                                date: "2024-01-20",
-                                min_temperature: 65,
-                                max_temperature: 78,
-                                temperature_unit: "F",
-                                day_weather_text: "Sunny",
-                                day_precipitation_probability: 0,
-                                night_weather_text: "Clear",
-                                night_precipitation_probability: 0
-                            },
-                            {
-                                date: "2024-01-21",
-                                min_temperature: 62,
-                                max_temperature: 75,
-                                temperature_unit: "F",
-                                day_weather_text: "Partly Cloudy",
-                                day_precipitation_probability: 20,
-                                night_weather_text: "Cloudy",
-                                night_precipitation_probability: 30
-                            }
-                        ]
-                    };
-                    break;
-                case 'get_alerts':
-                    mockResponse = {
-                        location: "New York, NY",
-                        alerts: [
-                            {
-                                alert_id: "ALERT123",
-                                title: "Winter Weather Advisory",
-                                description: "Snow expected late tonight",
-                                severity: "Moderate",
-                                category: "Weather"
-                            }
-                        ],
-                        count: 1
-                    };
-                    break;
-                case 'search_locations':
-                    mockResponse = {
-                        locations: [
-                            {
-                                key: "349727",
-                                name: "New York",
-                                country: "United States",
-                                region: "New York",
-                                postal_code: "10001"
-                            }
-                        ],
-                        count: 1
-                    };
-                    break;
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
             }
 
-            log(`✅ Received response from ${toolName}`, 'success');
-            log(`📊 Data: ${JSON.stringify(mockResponse, null, 2)}`, 'info');
+            isConnected = false;
+            updateStatus('🔴 Disconnected from server', 'disconnected');
+            log('🔌 Disconnected from FastMCP server', 'warning');
 
-            displayWeatherData(mockResponse, toolName);
-            updateStatus('🟢 Tool call completed successfully', 'connected');
+            resetConnectionState();
         }
 
-        function displayWeatherData(data, toolName) {
-            const weatherData = document.getElementById('weatherData');
-            const weatherContent = document.getElementById('weatherContent');
+        function resetConnectionState() {
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('connectionInfo').style.display = 'none';
+        }
 
-            let html = `<h3>📊 ${toolName.replace('_', ' ').toUpperCase()} Results</h3>`;
 
-            if (toolName === 'get_weather') {
-                html += `
-                    <div class="weather-grid">
-                        <div class="weather-item">
-                            <div class="weather-value">${data.temperature}°${data.temperature_unit}</div>
-                            <div class="weather-label">Temperature</div>
-                        </div>
-                        <div class="weather-item">
-                            <div class="weather-value">${data.humidity}%</div>
-                            <div class="weather-label">Humidity</div>
-                        </div>
-                        <div class="weather-item">
-                            <div class="weather-value">${data.wind_speed} mph</div>
-                            <div class="weather-label">Wind Speed</div>
-                        </div>
-                        <div class="weather-item">
-                            <div class="weather-value">${data.pressure}"</div>
-                            <div class="weather-label">Pressure</div>
-                        </div>
-                        <div class="weather-item">
-                            <div class="weather-value">${data.weather_text}</div>
-                            <div class="weather-label">Conditions</div>
-                        </div>
-                        <div class="weather-item">
-                            <div class="weather-value">${data.uv_index}</div>
-                            <div class="weather-label">UV Index</div>
-                        </div>
-                    </div>
-                `;
-            } else if (toolName === 'get_forecast') {
-                html += '<div class="weather-grid">';
-                data.forecast.forEach(day => {
-                    html += `
-                        <div class="weather-item">
-                            <div class="weather-value">${day.max_temperature}°/${day.min_temperature}°</div>
-                            <div class="weather-label">${day.date}</div>
-                            <div class="weather-label">${day.day_weather_text}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            } else if (toolName === 'get_alerts') {
-                if (data.alerts.length > 0) {
-                    data.alerts.forEach(alert => {
-                        html += `
-                            <div class="weather-item" style="grid-column: 1 / -1;">
-                                <div class="weather-value" style="color: #e74c3c;">⚠️ ${alert.title}</div>
-                                <div class="weather-label">${alert.description}</div>
-                                <div class="weather-label">Severity: ${alert.severity}</div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    html += '<div class="weather-item"><div class="weather-value">✅ No Active Alerts</div></div>';
+
+        function displayResponse(data, title) {
+            const responseDisplay = document.getElementById('responseDisplay');
+            const responseContent = document.getElementById('responseContent');
+
+            try {
+                // Try to parse and pretty-print JSON
+                const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+                const newContent = `=== ${title} ===\n${JSON.stringify(parsed, null, 2)}\n\n`;
+                responseContent.textContent += newContent;  // APPEND instead of overwrite
+            } catch (e) {
+                // If not JSON, display as-is
+                const newContent = `=== ${title} ===\n${data}\n\n`;
+                responseContent.textContent += newContent;  // APPEND instead of overwrite
+            }
+
+            responseDisplay.style.display = 'block';
+        }
+
+        function generateMockResponse(toolName, zipCode, days) {
+            // Mock responses for demonstration when real server isn't available
+            const mockData = {
+                get_weather: {
+                    success: true,
+                    location: `${zipCode} (Mock)`,
+                    temperature: 72,
+                    temperature_unit: "F",
+                    weather_text: "Partly Cloudy",
+                    humidity: 65,
+                    timestamp: new Date().toISOString()
+                },
+                get_forecast: {
+                    success: true,
+                    location: `${zipCode} (Mock)`,
+                    days: parseInt(days) || 5,
+                    forecast: Array.from({length: parseInt(days) || 5}, (_, i) => ({
+                        date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        high: 75 + Math.floor(Math.random() * 10),
+                        low: 55 + Math.floor(Math.random() * 10),
+                        condition: ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy'][Math.floor(Math.random() * 4)]
+                    }))
+                },
+                get_alerts: {
+                    success: true,
+                    location: `${zipCode} (Mock)`,
+                    alerts: [
+                        { type: "None", message: "No weather alerts for this area" }
+                    ]
+                },
+                search_locations: {
+                    success: true,
+                    query: zipCode,
+                    results: [
+                        { name: `${zipCode} Area`, lat: 40.7128, lon: -74.0060 },
+                        { name: `${zipCode} Downtown`, lat: 40.7589, lon: -73.9851 }
+                    ]
                 }
-            } else if (toolName === 'search_locations') {
-                html += '<div class="weather-grid">';
-                data.locations.forEach(location => {
-                    html += `
-                        <div class="weather-item">
-                            <div class="weather-value">${location.name}</div>
-                            <div class="weather-label">${location.region}, ${location.country}</div>
-                            <div class="weather-label">Key: ${location.key}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
+            };
 
-            weatherContent.innerHTML = html;
-            weatherData.style.display = 'block';
+            return mockData[toolName] || { success: false, error: "Unknown tool" };
         }
 
         function clearLogs() {
-            document.getElementById('logs').innerHTML = '<div class="log-entry info">Logs cleared. Ready for new requests...</div>';
-            document.getElementById('weatherData').style.display = 'none';
-            updateStatus('🔴 Ready to test FastMCP tools', 'disconnected');
+            const logs = document.getElementById('logs');
+            logs.innerHTML = '<div class="log-entry info">[Cleared] Logs cleared</div>';
+
+            const responseDisplay = document.getElementById('responseDisplay');
+            responseDisplay.style.display = 'none';
         }
 
-        // Demo functions
-        function demoWeather() {
-            document.getElementById('toolName').value = 'get_weather';
-            document.getElementById('zipCode').value = '10001';
-            document.getElementById('daysGroup').style.display = 'none';
-            callWeatherTool();
-        }
-
-        function demoForecast() {
-            document.getElementById('toolName').value = 'get_forecast';
-            document.getElementById('zipCode').value = '90210';
-            document.getElementById('days').value = '5';
-            document.getElementById('daysGroup').style.display = 'block';
-            callWeatherTool();
-        }
-
-        function demoAlerts() {
-            document.getElementById('toolName').value = 'get_alerts';
-            document.getElementById('zipCode').value = '33101';
-            document.getElementById('daysGroup').style.display = 'none';
-            callWeatherTool();
-        }
-
-        function demoSearch() {
-            document.getElementById('toolName').value = 'search_locations';
-            document.getElementById('zipCode').value = 'Chicago';
-            document.getElementById('daysGroup').style.display = 'none';
-            callWeatherTool();
-        }
-
-        // Initialize
-        log('🌤️ FastMCP Weather Tool Tester initialized', 'success');
-        log('💡 Note: This is a mock demo. To test real FastMCP calls, you need a backend proxy or FastMCP client.', 'info');
+        // Auto-connect on page load if server URL is localhost
+        window.addEventListener('load', function() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            if (serverUrl.includes('localhost')) {
+                log('🔄 Auto-connecting to localhost server...', 'info');
+                setTimeout(connect, 1000);
+            }
+        });
     </script>
 </body>
 </html>
