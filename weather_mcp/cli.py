@@ -90,10 +90,14 @@ def run(
 
         setup_weather_tools(mcp_server, weather_client)
 
-        # Mount the MCP server to the FastAPI app
-        mcp_app = mcp_server.http_app()
+        # Mount the MCP SSE app to the FastAPI app (deprecated but needed for SSE)
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            mcp_app = mcp_server.sse_app()
         app.mount("/", mcp_app)
-        logger.info("Mounted FastMCP server to FastAPI app")
+        logger.info("Mounted FastMCP SSE server to FastAPI app")
 
         return app
 
