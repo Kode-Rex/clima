@@ -15,8 +15,8 @@ from loguru import logger
 from weather_mcp.config import Config
 from weather_mcp.nws import NationalWeatherServiceClient
 from weather_mcp.sse import WeatherSSEApp
-from weather_mcp.handlers import setup_mcp_tools
-from weather_mcp.testing import test_nws_api
+from weather_mcp.mcp_tools import setup_mcp_tools
+from weather_mcp.services import WeatherTestingService
 
 # Configure logging
 logger.remove()
@@ -44,7 +44,8 @@ async def get_weather_client():
 async def run_test_mode():
     """Run API test mode"""
     async with get_weather_client() as client:
-        await test_nws_api(client)
+        testing_service = WeatherTestingService(client)
+        await testing_service.test_nws_api()
 
 
 async def run_sse_mode():

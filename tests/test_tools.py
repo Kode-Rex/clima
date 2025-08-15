@@ -7,19 +7,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from weather_mcp.implementations import (
-    get_5day_forecast_impl,
-    get_current_weather_impl,
-    get_location_alerts_impl,
-    get_location_forecast_impl,
-    get_location_weather_impl,
-    get_weather_alerts_impl,
-    search_locations_impl,
-    get_extended_forecast_impl,
-    get_hourly_forecast_impl,
-    get_detailed_grid_data_impl,
-    get_location_extended_forecast_impl,
-    get_location_hourly_forecast_impl,
+from weather_mcp.services import (
+    LocationService, WeatherService, ForecastService,
+    AlertService, GridDataService
 )
 from main import weather_client
 
@@ -33,16 +23,17 @@ class TestWeatherTools:
         self, mock_weather_client, sample_location_search_response
     ):
         """Test successful location search"""
-        result = await search_locations_impl(mock_weather_client, "New York", "en-us")
+        location_service = LocationService(mock_weather_client)
+        result = await location_service.search_locations("New York", "en-us")
 
         assert result["success"] is True
         assert result["locations"] == sample_location_search_response
         assert result["count"] == 1
 
-            # Verify the mock was called correctly
+        # Verify the mock was called correctly
         mock_weather_client.search_locations.assert_called_once_with(
-                "New York", "en-us"
-            )
+            "New York", "en-us"
+        )
 
     @pytest.mark.unit
     @pytest.mark.asyncio
