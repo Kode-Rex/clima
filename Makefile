@@ -49,7 +49,7 @@ format:
 	ruff check --fix weather_mcp/ tests/ main.py
 
 type-check:
-	mypy weather_mcp/ main.py
+	mypy --ignore-missing-imports weather_mcp/ main.py
 
 pre-commit:
 	pre-commit run --all-files

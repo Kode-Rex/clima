@@ -26,7 +26,7 @@ logger.add(
 )
 
 # Initialize FastMCP
-mcp = FastMCP("Weather MCP")
+mcp: FastMCP = FastMCP("Weather MCP")
 
 # Global weather client
 weather_client: NationalWeatherServiceClient | None = None
