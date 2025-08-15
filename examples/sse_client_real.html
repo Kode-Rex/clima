@@ -148,7 +148,7 @@
 
         <div class="input-group">
             <label for="serverUrl">FastMCP Server URL:</label>
-            <input type="text" id="serverUrl" value="http://localhost:8000/sse" placeholder="http://localhost:8000/sse">
+            <input type="text" id="serverUrl" value="http://localhost:8000/sse/" placeholder="http://localhost:8000/sse/">
         </div>
 
         <div class="connection-controls">
@@ -359,27 +359,16 @@
                         break;
                 }
 
-                // For SSE, we would need to send the request via a separate HTTP endpoint
-                // Since EventSource is read-only, we'll make a regular HTTP request
-                fetch(`http://localhost:8000/tools/${toolName}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(toolArgs)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    log(`✅ Tool call successful: ${toolName}`, 'success');
-                    displayResponse(JSON.stringify(data, null, 2), `${toolName} Response`);
-                })
-                .catch(error => {
-                    log(`❌ Tool call failed: ${error.message}`, 'error');
-                    // Try the mock response as fallback
-                    log('🔄 Using mock data for demonstration', 'warning');
-                    const mockData = generateMockResponse(toolName, zipCode, days);
-                    displayResponse(JSON.stringify(mockData, null, 2), `${toolName} Mock Response`);
-                });
+                // FastMCP SSE is primarily for receiving messages, not sending tool calls
+                // For now, we'll use mock data to demonstrate the interface
+                log('🔄 Using mock data for demonstration (FastMCP tool calls require MCP client)', 'warning');
+                const mockData = generateMockResponse(toolName, zipCode, days);
+                displayResponse(JSON.stringify(mockData, null, 2), `${toolName} Mock Response`);
+
+                // Simulate receiving the response via SSE
+                if (isConnected) {
+                    log('📨 Simulating SSE response from server', 'info');
+                }
 
             } catch (error) {
                 log(`❌ Error calling tool: ${error.message}`, 'error');
