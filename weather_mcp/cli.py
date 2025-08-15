@@ -65,6 +65,20 @@ def run(
         configure_logging()
         logger.info("Starting Weather API Server with SSE (National Weather Service)")
 
+        # Create FastAPI app with CORS middleware
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+
+        app = FastAPI(title="Weather MCP Server")
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["*"],
+        )
+        logger.info("Created FastAPI app with CORS middleware")
+
         # Initialize FastMCP server for weather only
         mcp_server: FastMCP = FastMCP("Weather API Server")
 
@@ -76,7 +90,12 @@ def run(
 
         setup_weather_tools(mcp_server, weather_client)
 
-        return mcp_server
+        # Mount the MCP server to the FastAPI app
+        mcp_app = mcp_server.http_app()
+        app.mount("/", mcp_app)
+        logger.info("Mounted FastMCP server to FastAPI app")
+
+        return app
 
     def run_health_server():
         """Run health check server on a separate port"""
@@ -90,16 +109,20 @@ def run(
     health_thread = threading.Thread(target=run_health_server, daemon=True)
     health_thread.start()
 
-    # Initialize and run main MCP server
-    mcp_server = asyncio.run(run_server())
+    # Initialize the FastAPI app with mounted MCP server
+    app = asyncio.run(run_server())
 
-    # Run FastMCP server with SSE transport (weather only)
+    # Run FastAPI app with FastMCP mounted (with CORS)
     logger.info(f"Weather MCP Server: http://{host}:{port}")
     logger.info(f"Health endpoints: http://{host}:{port + 1}/health")
     logger.info(f"Metrics endpoint: http://{host}:{port + 1}/metrics")
-    logger.info(f"SSE Client: http://{host}:{port + 1}/client (with CORS proxy)")
+    logger.info(
+        f"SSE Client: http://{host}:{port + 1}/client (CORS enabled via FastAPI)"
+    )
 
-    mcp_server.run(transport="sse", host=host, port=port)
+    import uvicorn
+
+    uvicorn.run(app, host=host, port=port)
 
 
 @app.command()

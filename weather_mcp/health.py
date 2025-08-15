@@ -110,12 +110,8 @@ def setup_health_endpoints(app: FastAPI):
             client_path = current_dir.parent / "examples" / "sse_client_real.html"
 
             if client_path.exists():
-                # Read and modify the HTML to use same-origin SSE
+                # Read the HTML content and return it directly
                 html_content = client_path.read_text(encoding="utf-8")
-                # Replace the SSE URL to use the proxy on the same origin
-                html_content = html_content.replace(
-                    'value="http://localhost:8000/sse/"', 'value="/sse-proxy/"'
-                )
                 return HTMLResponse(content=html_content)
             else:
                 return JSONResponse(
@@ -130,32 +126,6 @@ def setup_health_endpoints(app: FastAPI):
                 status_code=500,
                 content={"error": "Failed to serve SSE client", "details": str(e)},
             )
-
-    @app.get("/sse-proxy/")
-    async def sse_proxy():
-        """Proxy SSE connection to FastMCP server to avoid CORS"""
-        import httpx
-        from fastapi.responses import StreamingResponse
-
-        async def proxy_sse():
-            try:
-                async with httpx.AsyncClient() as client:
-                    async with client.stream(
-                        "GET", "http://localhost:8000/sse/"
-                    ) as response:
-                        async for chunk in response.aiter_bytes():
-                            yield chunk
-            except Exception as e:
-                yield f"data: Error connecting to FastMCP: {e}\n\n".encode()
-
-        return StreamingResponse(
-            proxy_sse(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            },
-        )
 
 
 def create_health_app() -> FastAPI:
