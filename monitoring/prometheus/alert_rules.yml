@@ -1,0 +1,72 @@
+groups:
+  - name: weather_mcp_alerts
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(weather_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Weather MCP service has error rate above 10% for more than 2 minutes"
+
+      # API request latency
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(weather_api_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile API latency is above 2 seconds"
+
+      # NWS API failures
+      - alert: NWSAPIFailures
+        expr: rate(nws_api_requests_total{status_code="500"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NWS API failures"
+          description: "National Weather Service API is experiencing failures"
+
+      # Service down
+      - alert: WeatherMCPDown
+        expr: up{job="clima-mcp"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Weather MCP service is down"
+          description: "Weather MCP service has been down for more than 1 minute"
+
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: rate(cache_operations_total{result="hit"}[5m]) / rate(cache_operations_total{operation="get"}[5m]) < 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is below 70%"
+
+      # Too many SSE connections
+      - alert: TooManySSEConnections
+        expr: sse_connections_active > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of SSE connections"
+          description: "Number of active SSE connections is above 80"
+
+      # Old weather data
+      - alert: StaleWeatherData
+        expr: weather_data_freshness_seconds > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Stale weather data"
+          description: "Weather data is older than 1 hour"

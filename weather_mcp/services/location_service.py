@@ -2,9 +2,11 @@
 Location service for handling location searches and operations
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+
+from ..observability import track_api_request
 
 if TYPE_CHECKING:
     from ..nws import NationalWeatherServiceClient
@@ -16,7 +18,8 @@ class LocationService:
     def __init__(self, weather_client: "NationalWeatherServiceClient"):
         self.weather_client = weather_client
 
-    async def search_locations(self, query: str, language: str = "en-us") -> dict:
+    @track_api_request("search_locations", "GET")
+    async def search_locations(self, query: str, language: str = "en-us") -> dict[str, Any]:
         """Search for weather locations by name or ZIP code"""
         try:
             results = await self.weather_client.search_locations(query, language)
@@ -25,7 +28,7 @@ class LocationService:
             logger.error(f"Location search failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_weather(self, query: str, language: str = "en-us") -> dict:
+    async def get_location_weather(self, query: str, language: str = "en-us") -> dict[str, Any]:
         """Get current weather by searching for a location first"""
         try:
             from .weather_service import WeatherService
@@ -54,7 +57,7 @@ class LocationService:
             logger.error(f"Location weather failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_forecast(self, query: str, language: str = "en-us") -> dict:
+    async def get_location_forecast(self, query: str, language: str = "en-us") -> dict[str, Any]:
         """Get 5-day forecast by searching for a location first"""
         try:
             from .forecast_service import ForecastService
@@ -84,7 +87,7 @@ class LocationService:
             logger.error(f"Location forecast failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_alerts(self, query: str, language: str = "en-us") -> dict:
+    async def get_location_alerts(self, query: str, language: str = "en-us") -> dict[str, Any]:
         """Get weather alerts by searching for a location first"""
         try:
             from .alert_service import AlertService
@@ -114,7 +117,7 @@ class LocationService:
 
     async def get_location_extended_forecast(
         self, query: str, days: int = 7, language: str = "en-us"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get extended forecast by searching for a location first"""
         try:
             from .forecast_service import ForecastService
@@ -147,7 +150,7 @@ class LocationService:
 
     async def get_location_hourly_forecast(
         self, query: str, hours: int = 168, language: str = "en-us"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get hourly forecast by searching for a location first"""
         try:
             from .forecast_service import ForecastService

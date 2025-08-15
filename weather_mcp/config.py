@@ -49,6 +49,13 @@ class Config(BaseSettings):
         300, description="SSE connection timeout in seconds"
     )
 
+    # Observability settings
+    enable_metrics: bool = Field(True, description="Enable Prometheus metrics")
+    metrics_port: int = Field(9090, description="Prometheus metrics server port")
+    enable_tracing: bool = Field(True, description="Enable OpenTelemetry tracing")
+    structured_logging: bool = Field(True, description="Enable structured JSON logging")
+    log_file: str = Field("logs/clima-mcp.log", description="Log file path")
+
 
 def get_config() -> Config:
     """Get configuration instance"""
@@ -57,17 +64,22 @@ def get_config() -> Config:
 
 def setup_logging(config: Config):
     """Setup logging configuration"""
-    import sys
+    if config.structured_logging:
+        from .observability import setup_structured_logging
 
-    from loguru import logger
+        setup_structured_logging()
+    else:
+        import sys
 
-    # Remove default logger
-    logger.remove()
+        from loguru import logger
 
-    # Add new logger with custom format
-    logger.add(
-        sys.stderr,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}",
-        level=config.log_level,
-        colorize=True,
-    )
+        # Remove default logger
+        logger.remove()
+
+        # Add new logger with custom format
+        logger.add(
+            sys.stderr,
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}",
+            level=config.log_level,
+            colorize=True,
+        )

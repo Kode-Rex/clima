@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-unit test-integration coverage lint format format-check type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker-dev docker-logs docker-stop
+.PHONY: help install install-dev test test-unit test-integration coverage lint format format-check type-check clean dev-setup pre-commit run run-test docker-build docker-run docker-dev-run docker-logs docker-stop
 
 # Default target
 help:
@@ -19,7 +19,7 @@ help:
 	@echo "  run           Run weather API server"
 	@echo "  docker-build  Build Docker image"
 	@echo "  docker-run    Start Docker container with docker-compose"
-	@echo "  run-docker-dev Start Docker container in development mode"
+	@echo "  docker-dev-run Start Docker container in development mode"
 	@echo "  docker-logs   View Docker container logs"
 	@echo "  docker-stop   Stop Docker containers"
 
@@ -91,7 +91,7 @@ docker-build:
 docker-run:
 	docker-compose up -d clima-mcp
 
-run-docker-dev:
+docker-dev-run:
 	docker-compose --profile dev up clima-mcp-dev
 
 docker-logs:
@@ -99,3 +99,46 @@ docker-logs:
 
 docker-stop:
 	docker-compose down
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+
+start-observability:
+	@echo "🔍 Starting full observability stack..."
+	./scripts/start-observability.sh
+
+observability-up:
+	docker-compose -f docker-compose.observability.yml up -d
+
+observability-down:
+	docker-compose -f docker-compose.observability.yml down
+
+observability-logs:
+	docker-compose -f docker-compose.observability.yml logs -f
+
+observability-restart:
+	docker-compose -f docker-compose.observability.yml restart
+
+grafana-open:
+	@echo "Opening Grafana dashboard..."
+	@open http://localhost:3000 || echo "Visit http://localhost:3000 (admin/admin)"
+
+prometheus-open:
+	@echo "Opening Prometheus..."
+	@open http://localhost:9091 || echo "Visit http://localhost:9091"
+
+health-check:
+	@echo "🏥 Checking service health..."
+	@curl -s http://localhost:8000/health | jq . || echo "Service not responding"
+
+metrics-check:
+	@echo "📊 Checking metrics..."
+	@curl -s http://localhost:8000/metrics | head -20
+
+observability-status:
+	@echo "📊 Observability Stack Status:"
+	@echo "Weather MCP: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:8000/health || echo "DOWN")"
+	@echo "Prometheus: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:9091/-/healthy || echo "DOWN")"
+	@echo "Grafana: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:3000/api/health || echo "DOWN")"
+	@echo "Loki: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:3100/ready || echo "DOWN")"

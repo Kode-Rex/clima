@@ -8,7 +8,8 @@ import asyncio
 import typer
 from loguru import logger
 
-from .config import Config, setup_logging
+from .config import Config, get_config, setup_logging
+from .observability import observability
 
 app = typer.Typer(
     name="clima-mcp",
@@ -20,8 +21,14 @@ app = typer.Typer(
 def configure_logging(config: Config | None = None):
     """Configure logging for CLI"""
     if config is None:
-        config = Config()
+        config = get_config()
     setup_logging(config)
+
+    # Initialize observability
+    if config.enable_tracing:
+        observability.setup_tracing()
+    if config.enable_metrics:
+        observability.setup_metrics(config.metrics_port)
 
 
 @app.command()

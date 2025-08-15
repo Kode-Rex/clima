@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from ..observability import track_api_request
+
 if TYPE_CHECKING:
     from ..nws import NationalWeatherServiceClient
 
@@ -16,6 +18,7 @@ class WeatherService:
     def __init__(self, weather_client: "NationalWeatherServiceClient"):
         self.weather_client = weather_client
 
+    @track_api_request("current_weather", "GET")
     async def get_current_weather(
         self, location_key: str, details: bool = True
     ) -> dict:

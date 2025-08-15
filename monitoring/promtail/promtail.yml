@@ -1,0 +1,37 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: clima-mcp-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: clima-mcp
+          service: weather-mcp
+          __path__: /var/log/clima-mcp/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: time
+            level: level
+            message: message
+            correlation_id: extra.correlation_id
+            endpoint: extra.endpoint
+            method: extra.method
+            duration: extra.duration
+      - labels:
+          level:
+          correlation_id:
+          endpoint:
+          method:
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02 15:04:05.000"
