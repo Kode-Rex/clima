@@ -75,10 +75,10 @@ clean:
 
 # Application commands
 run-test:
-	clima-mcp test
+	python -m weather_mcp.cli test
 
 run:
-	clima-mcp run
+	python -m weather_mcp.cli run
 
 # CI/CD friendly commands
 ci-test: install-dev lint format-check type-check test coverage
