@@ -54,7 +54,7 @@ A comprehensive Model Context Protocol (MCP) server that provides **completely f
 docker-compose up --build
 
 # Or using Makefile
-make run-docker
+make docker-run
 ```
 
 #### Using Makefile (recommended for development):
@@ -341,7 +341,9 @@ make run-test          # Test the NWS API
 make run               # Run FastMCP server with SSE transport
 
 # Docker
-make run-docker        # Run server in Docker container
+make docker-build      # Build Docker image
+make docker-run        # Run server in Docker container
+make run-docker-dev    # Start development mode with hot reload
 make docker-logs       # View Docker logs
 make docker-stop       # Stop Docker containers
 
@@ -448,7 +450,7 @@ We welcome contributions! The project includes comprehensive development tools t
 ### Continuous Integration
 
 The project uses GitHub Actions for:
-- **Automated testing** on Python 3.11 and 3.12
+- **Automated testing** on Python 3.11
 - **Code quality checks** (formatting, linting, type checking)
 - **Security scanning** with Bandit
 - **Coverage reporting** to Codecov
