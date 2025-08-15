@@ -2,7 +2,7 @@
 Location service for handling location searches and operations
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from loguru import logger
 
@@ -19,7 +19,9 @@ class LocationService:
         self.weather_client = weather_client
 
     @track_api_request("search_locations", "GET")
-    async def search_locations(self, query: str, language: str = "en-us") -> dict[str, Any]:
+    async def search_locations(
+        self, query: str, language: str = "en-us"
+    ) -> dict[str, Any]:
         """Search for weather locations by name or ZIP code"""
         try:
             results = await self.weather_client.search_locations(query, language)
@@ -28,7 +30,9 @@ class LocationService:
             logger.error(f"Location search failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_weather(self, query: str, language: str = "en-us") -> dict[str, Any]:
+    async def get_location_weather(
+        self, query: str, language: str = "en-us"
+    ) -> dict[str, Any]:
         """Get current weather by searching for a location first"""
         try:
             from .weather_service import WeatherService
@@ -46,7 +50,7 @@ class LocationService:
             )
 
             if not weather_result["success"]:
-                return weather_result
+                return cast(dict[str, Any], weather_result)
 
             return {
                 "success": True,
@@ -57,7 +61,9 @@ class LocationService:
             logger.error(f"Location weather failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_forecast(self, query: str, language: str = "en-us") -> dict[str, Any]:
+    async def get_location_forecast(
+        self, query: str, language: str = "en-us"
+    ) -> dict[str, Any]:
         """Get 5-day forecast by searching for a location first"""
         try:
             from .forecast_service import ForecastService
@@ -75,7 +81,7 @@ class LocationService:
             )
 
             if not forecast_result["success"]:
-                return forecast_result
+                return cast(dict[str, Any], forecast_result)
 
             return {
                 "success": True,
@@ -87,7 +93,9 @@ class LocationService:
             logger.error(f"Location forecast failed: {e}")
             return {"success": False, "error": str(e)}
 
-    async def get_location_alerts(self, query: str, language: str = "en-us") -> dict[str, Any]:
+    async def get_location_alerts(
+        self, query: str, language: str = "en-us"
+    ) -> dict[str, Any]:
         """Get weather alerts by searching for a location first"""
         try:
             from .alert_service import AlertService
@@ -103,7 +111,7 @@ class LocationService:
             alert_result = await alert_service.get_weather_alerts(location_key)
 
             if not alert_result["success"]:
-                return alert_result
+                return cast(dict[str, Any], alert_result)
 
             return {
                 "success": True,
