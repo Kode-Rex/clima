@@ -21,12 +21,13 @@ class Config(BaseSettings):
     debug: bool = Field(False, description="Enable debug mode")
     log_level: str = Field("INFO", description="Logging level")
 
-    # AccuWeather API settings (now optional)
-    accuweather_api_key: str | None = Field(
-        None, description="AccuWeather API key (optional)"
+    # NWS API settings (no API key required - government service)
+    nws_base_url: str = Field(
+        "https://api.weather.gov", description="National Weather Service API base URL"
     )
-    accuweather_base_url: str = Field(
-        "http://dataservice.accuweather.com", description="AccuWeather API base URL"
+    nominatim_base_url: str = Field(
+        "https://nominatim.openstreetmap.org",
+        description="Nominatim geocoding service URL",
     )
 
     # Cache settings

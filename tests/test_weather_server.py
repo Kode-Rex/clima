@@ -18,11 +18,17 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_create_server_with_config(self, mock_config):
         """Test server creation with provided config"""
-        with patch("main.NationalWeatherServiceClient") as mock_client_class:
+        with patch("weather_mcp.nws.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
-            from main import mcp
+            from fastmcp import FastMCP
+
+            from weather_mcp.mcp_tools import setup_mcp_tools
+
+            mcp = FastMCP("Weather MCP")
+            weather_client = mock_client
+            setup_mcp_tools(mcp, weather_client)
 
             assert mcp is not None
             assert mcp.name == "Weather MCP"
@@ -31,8 +37,10 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_create_server_without_config(self):
         """Test server creation without provided config (uses default)"""
-        with patch("main.NationalWeatherServiceClient"):
-            from main import mcp
+        with patch("weather_mcp.nws.NationalWeatherServiceClient"):
+            from fastmcp import FastMCP
+
+            mcp = FastMCP("Weather MCP")
 
             assert mcp is not None
 
@@ -40,11 +48,16 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_server_tools_registration(self, mock_config):
         """Test that all tools are properly registered with the server"""
-        with patch("main.NationalWeatherServiceClient") as mock_client_class:
+        with patch("weather_mcp.nws.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
-            from main import mcp
+            from fastmcp import FastMCP
+
+            from weather_mcp.mcp_tools import setup_mcp_tools
+
+            mcp = FastMCP("Weather MCP")
+            setup_mcp_tools(mcp, mock_client)
 
             # Check that the server has the expected tools
             # Note: FastMCP doesn't expose tools directly, so we test indirectly
@@ -55,14 +68,17 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_mcp_server_initialization(self, mock_config):
         """Test MCP server initialization process"""
-        with patch("main.NationalWeatherServiceClient") as mock_client_class:
+        with patch("weather_mcp.nws.NationalWeatherServiceClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
-            from main import mcp
+            from fastmcp import FastMCP
 
-            # Verify weather client is initialized
+            mcp = FastMCP("Weather MCP")
+
+            # Verify server is initialized
             assert mcp is not None
+            assert mcp.name == "Weather MCP"
 
 
 class TestSSEServer:
@@ -276,11 +292,16 @@ class TestServerIntegration:
         """Test server creation in a fully mocked environment"""
         env = mock_server_environment
 
-        with patch("main.weather_client", env["weather_client"]):
-            # Test that the global weather client is properly mocked
-            from main import mcp
+        from fastmcp import FastMCP
 
-            assert mcp is not None
+        from weather_mcp.mcp_tools import setup_mcp_tools
+
+        # Create MCP server with mocked environment
+        mcp = FastMCP("Weather MCP")
+        setup_mcp_tools(mcp, env["weather_client"])
+
+        assert mcp is not None
+        assert mcp.name == "Weather MCP"
 
     @pytest.mark.integration
     def test_sse_app_with_mock_environment(self, mock_server_environment):

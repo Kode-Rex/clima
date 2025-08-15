@@ -592,6 +592,5 @@ def mock_fastmcp_server():
 @pytest.fixture
 async def mock_server_environment(mock_config, mock_weather_client):
     """Set up a complete mock environment for server testing"""
-    with patch("main.weather_client", mock_weather_client):
-        with patch("weather_mcp.config.get_config", return_value=mock_config):
-            yield {"config": mock_config, "weather_client": mock_weather_client}
+    with patch("weather_mcp.config.get_config", return_value=mock_config):
+        yield {"config": mock_config, "weather_client": mock_weather_client}

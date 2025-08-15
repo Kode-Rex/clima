@@ -68,13 +68,13 @@ clean:
 
 # Application commands
 run-test:
-	python main.py test
+	clima-mcp test
 
 run-mcp:
-	python main.py mcp
+	clima-mcp mcp
 
 run-sse:
-	python main.py sse
+	clima-mcp sse
 
 # CI/CD friendly commands
 ci-test: install-dev lint type-check test coverage
