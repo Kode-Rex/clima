@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-unit test-integration coverage lint format type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker run-docker-dev docker-logs docker-stop
+.PHONY: help install install-dev test test-unit test-integration coverage lint format format-check type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker run-docker-dev docker-logs docker-stop
 
 # Default target
 help:
@@ -52,6 +52,9 @@ format:
 	black weather_mcp/ tests/ main.py
 	ruff check --fix weather_mcp/ tests/ main.py
 
+format-check:
+	black --check weather_mcp/ tests/ main.py
+
 type-check:
 	mypy --ignore-missing-imports weather_mcp/ main.py
 
@@ -78,7 +81,7 @@ run:
 	clima-mcp run
 
 # CI/CD friendly commands
-ci-test: install-dev lint type-check test coverage
+ci-test: install-dev lint format-check type-check test coverage
 	@echo "All CI checks passed!"
 
 # Docker commands (if you add Docker later)
