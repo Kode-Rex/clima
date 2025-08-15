@@ -75,10 +75,18 @@ clean:
 
 # Application commands
 run-test:
-	python -m weather_mcp.cli test
+	@if [ -f venv/bin/python ]; then \
+		venv/bin/python -m weather_mcp.cli test; \
+	else \
+		python -m weather_mcp.cli test; \
+	fi
 
 run:
-	python -m weather_mcp.cli run
+	@if [ -f venv/bin/python ]; then \
+		venv/bin/python -m weather_mcp.cli run; \
+	else \
+		python -m weather_mcp.cli run; \
+	fi
 
 # CI/CD friendly commands
 ci-test: install-dev lint format-check type-check test coverage

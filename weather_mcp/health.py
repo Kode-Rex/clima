@@ -3,9 +3,10 @@ Health check and metrics endpoints for Weather MCP Server
 """
 
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .config import get_config
@@ -98,6 +99,32 @@ def setup_health_endpoints(app: FastAPI):
             return JSONResponse(
                 status_code=500,
                 content={"error": "Failed to get custom metrics", "details": str(e)},
+            )
+
+    @app.get("/client")
+    async def sse_client():
+        """Serve the SSE test client"""
+        try:
+            # Get the path to the examples directory
+            current_dir = Path(__file__).parent
+            client_path = current_dir.parent / "examples" / "sse_client.html"
+
+            if client_path.exists():
+                # Read the HTML content and return it directly
+                html_content = client_path.read_text(encoding="utf-8")
+                return HTMLResponse(content=html_content)
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "error": "SSE client file not found",
+                        "path": str(client_path),
+                    },
+                )
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to serve SSE client", "details": str(e)},
             )
 
 
