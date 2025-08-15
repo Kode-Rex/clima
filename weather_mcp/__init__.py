@@ -1,5 +1,5 @@
 """
-Weather MCP - National Weather Service Edition
+Weather API Server - National Weather Service Edition
 Free weather data and alerts using NWS API
 """
 
@@ -35,9 +35,6 @@ from .services import (
     WeatherTestingService,
 )
 
-# SSE Server
-from .sse import WeatherSSEApp, WeatherSSEManager
-
 __all__ = [
     # Version
     "__version__",
@@ -62,7 +59,4 @@ __all__ = [
     "HourlyForecastQuery",
     "LocationKey",
     "LocationQuery",
-    # SSE
-    "WeatherSSEApp",
-    "WeatherSSEManager",
 ]

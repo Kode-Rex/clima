@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-unit test-integration coverage lint format type-check clean dev-setup pre-commit
+.PHONY: help install install-dev test test-unit test-integration coverage lint format type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker run-docker-dev docker-logs docker-stop
 
 # Default target
 help:
@@ -16,8 +16,12 @@ help:
 	@echo "  pre-commit    Run pre-commit hooks"
 	@echo "  clean         Clean up build artifacts"
 	@echo "  run-test      Test the NWS API"
-	@echo "  run-mcp       Run MCP server"
-	@echo "  run-sse       Run SSE server"
+	@echo "  run           Run weather API server"
+	@echo "  docker-build  Build Docker image"
+	@echo "  run-docker    Start Docker container in SSE mode"
+	@echo "  run-docker-dev Start Docker container in development mode"
+	@echo "  docker-logs   View Docker container logs"
+	@echo "  docker-stop   Stop Docker containers"
 
 install:
 	pip install -e .
@@ -70,11 +74,8 @@ clean:
 run-test:
 	clima-mcp test
 
-run-mcp:
-	clima-mcp mcp
-
-run-sse:
-	clima-mcp sse
+run:
+	clima-mcp run
 
 # CI/CD friendly commands
 ci-test: install-dev lint type-check test coverage
@@ -86,3 +87,15 @@ docker-build:
 
 docker-run:
 	docker run -p 8000:8000 clima-mcp
+
+run-docker:
+	docker-compose up -d clima-mcp
+
+run-docker-dev:
+	docker-compose --profile dev up clima-mcp-dev
+
+docker-logs:
+	docker-compose logs -f clima-mcp
+
+docker-stop:
+	docker-compose down

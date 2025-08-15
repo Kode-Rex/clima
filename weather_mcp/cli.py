@@ -12,7 +12,7 @@ from .config import Config, setup_logging
 
 app = typer.Typer(
     name="clima-mcp",
-    help="Weather MCP Server - National Weather Service Edition",
+    help="Weather API Server - National Weather Service Edition",
     add_completion=False,
 )
 
@@ -42,62 +42,37 @@ def test():
 
 
 @app.command()
-def mcp():
-    """Run MCP server mode"""
+def run(
+    host: str = typer.Option("0.0.0.0", help="Server host address"),
+    port: int = typer.Option(8000, help="Server port"),
+):
+    """Run weather server with SSE endpoints"""
     from fastmcp import FastMCP
 
-    from .mcp_tools import setup_mcp_tools
     from .nws import NationalWeatherServiceClient
 
-    async def run_mcp():
+    async def run_server():
         configure_logging()
-        logger.info("Starting Weather MCP Server (National Weather Service)")
+        logger.info("Starting Weather API Server with SSE (National Weather Service)")
 
-        # Initialize FastMCP
-        mcp_server: FastMCP = FastMCP("Weather MCP")
+        # Initialize FastMCP with SSE support
+        mcp_server: FastMCP = FastMCP("Weather API Server")
 
         # Initialize weather client
         weather_client = NationalWeatherServiceClient()
 
-        # Setup MCP tools
-        setup_mcp_tools(mcp_server, weather_client)
+        # Setup weather tools for API access
+        from .api_tools import setup_weather_tools
+
+        setup_weather_tools(mcp_server, weather_client)
 
         return mcp_server
 
-    # Initialize dependencies
-    mcp_server = asyncio.run(run_mcp())
+    # Initialize and run server
+    mcp_server = asyncio.run(run_server())
 
-    # Run MCP server with its own event loop
-    mcp_server.run(transport="stdio")
-
-
-@app.command()
-def sse(
-    host: str = typer.Option("0.0.0.0", help="Server host address"),
-    port: int = typer.Option(8000, help="Server port"),
-):
-    """Run SSE server mode"""
-    import uvicorn
-
-    from .nws import NationalWeatherServiceClient
-    from .sse import WeatherSSEApp
-
-    async def run_sse():
-        configure_logging()
-        logger.info("Starting Weather MCP SSE Server (National Weather Service)")
-
-        config = Config(host=host, port=port)
-
-        async with NationalWeatherServiceClient() as client:
-            sse_app = WeatherSSEApp(config, client)
-            app = sse_app.get_app()
-
-            # Use uvicorn server directly
-            server_config = uvicorn.Config(app, host=config.host, port=config.port)
-            server = uvicorn.Server(server_config)
-            await server.serve()
-
-    asyncio.run(run_sse())
+    # Run FastMCP server with SSE transport
+    mcp_server.run(transport="sse", host=host, port=port)
 
 
 @app.command()
@@ -105,7 +80,7 @@ def version():
     """Show version information"""
     from ._version import __version__
 
-    typer.echo(f"Weather MCP Server v{__version__}")
+    typer.echo(f"Weather API Server v{__version__}")
 
 
 def main():

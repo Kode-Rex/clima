@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   clima-mcp:
     build: .
@@ -32,6 +30,6 @@ services:
     volumes:
       - .:/app
       - ./logs:/app/logs
-    command: ["python", "main.py", "sse"]
+    command: ["clima-mcp", "run"]
     profiles:
       - dev
