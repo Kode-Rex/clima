@@ -12,7 +12,8 @@ from typing import Dict, List, Optional, Set
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from .config import Config
@@ -614,6 +615,7 @@ class WeatherSSEApp:
         )
 
         self._setup_routes()
+        self._setup_static_files()
 
     def _setup_routes(self):
         """Setup FastAPI routes for SSE endpoints"""
@@ -698,6 +700,39 @@ class WeatherSSEApp:
             return JSONResponse(
                 {"status": "ok", "timestamp": datetime.now().isoformat()}
             )
+
+    def _setup_static_files(self):
+        """Setup static file serving for the HTML test client"""
+        import os
+        
+        # Get the project root directory (parent of weather_mcp)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+        examples_dir = os.path.join(project_root, "examples")
+        
+        @self.app.get("/")
+        async def serve_test_client():
+            """Serve the SSE test client HTML page"""
+            html_file = os.path.join(examples_dir, "sse_client.html")
+            if os.path.exists(html_file):
+                return FileResponse(html_file, media_type="text/html")
+            else:
+                return JSONResponse(
+                    {"error": "Test client not found", "path": html_file}, 
+                    status_code=404
+                )
+        
+        @self.app.get("/test")
+        async def serve_test_client_alt():
+            """Alternative route for the SSE test client"""
+            html_file = os.path.join(examples_dir, "sse_client.html")
+            if os.path.exists(html_file):
+                return FileResponse(html_file, media_type="text/html")
+            else:
+                return JSONResponse(
+                    {"error": "Test client not found", "path": html_file}, 
+                    status_code=404
+                )
 
     def get_app(self) -> FastAPI:
         """Get the FastAPI application"""

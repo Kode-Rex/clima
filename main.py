@@ -634,8 +634,8 @@ async def main():
             logger.info("Starting Weather MCP Server (National Weather Service)")
             
             async with get_weather_client() as client:
-                # Run the MCP server
-                await mcp.run(transport="stdio")
+                # For MCP mode, we need to exit this coroutine and let FastMCP handle the event loop
+                return
         
         else:
             logger.error(f"Unknown mode: {mode}")
@@ -647,8 +647,27 @@ async def main():
         logger.info("Starting Weather MCP Server (National Weather Service)")
         
         async with get_weather_client() as client:
-            await mcp.run(transport="stdio")
+            # For MCP mode, we need to exit this coroutine and let FastMCP handle the event loop
+            return
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    # Handle different modes with appropriate event loop management
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] in ["test", "sse"]:
+        # For test and sse modes, use normal asyncio.run()
+        asyncio.run(main())
+    else:
+        # For MCP mode, let FastMCP handle the event loop entirely
+        asyncio.run(main())  # Initialize dependencies
+        
+        # Now run MCP server with its own event loop
+        from weather_mcp.nws import NationalWeatherServiceClient
+        
+        async def setup_mcp():
+            global weather_client
+            weather_client = NationalWeatherServiceClient()
+            
+        asyncio.run(setup_mcp())
+        mcp.run(transport="stdio") 
