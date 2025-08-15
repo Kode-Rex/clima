@@ -148,7 +148,12 @@
 
         <div class="input-group">
             <label for="serverUrl">FastMCP Server URL:</label>
-            <input type="text" id="serverUrl" value="http://localhost:8000/sse/" placeholder="http://localhost:8000/sse/">
+            <input type="text" id="serverUrl" value="http://localhost:8000/sse" placeholder="http://localhost:8000/sse">
+        </div>
+
+        <div class="input-group">
+            <label for="zipCode">ZIP Code:</label>
+            <input type="text" id="zipCode" value="10001" placeholder="Enter ZIP code (e.g., 10001, 90210)" maxlength="10">
         </div>
 
         <div class="connection-controls">
@@ -167,29 +172,8 @@
     </div>
 
     <div class="container">
-        <h2>🌤️ Weather Tools</h2>
-
-        <div class="input-group">
-            <label for="toolName">Select Weather Tool:</label>
-            <select id="toolName">
-                <option value="get_weather">Get Current Weather</option>
-                <option value="get_forecast">Get Forecast</option>
-                <option value="get_alerts">Get Weather Alerts</option>
-                <option value="search_locations">Search Locations</option>
-            </select>
-        </div>
-
-        <div class="input-group">
-            <label for="zipCode">ZIP Code / Location:</label>
-            <input type="text" id="zipCode" value="10001" placeholder="e.g., 10001 or New York">
-        </div>
-
-        <div class="input-group" id="daysGroup" style="display: none;">
-            <label for="days">Forecast Days (1-7):</label>
-            <input type="number" id="days" min="1" max="7" value="5">
-        </div>
-
-        <button id="callToolBtn" onclick="callWeatherTool()" disabled>📡 Call Weather Tool</button>
+        <h2>🌤️ Live Weather Stream</h2>
+        <p class="info-text">Enter a ZIP code above and connect to stream all weather data automatically!</p>
     </div>
 
     <div class="container">
@@ -242,14 +226,24 @@
                 return;
             }
 
-            const serverUrl = document.getElementById('serverUrl').value.trim();
-            if (!serverUrl) {
+            const baseUrl = document.getElementById('serverUrl').value.trim();
+            const zipCode = document.getElementById('zipCode').value.trim();
+
+            if (!baseUrl) {
                 log('Please enter a server URL', 'error');
                 return;
             }
 
-            updateStatus('🟡 Connecting to FastMCP server...', 'connecting');
-            log(`Attempting to connect to: ${serverUrl}`, 'info');
+            if (!zipCode) {
+                log('Please enter a ZIP code', 'error');
+                return;
+            }
+
+            // Append ZIP code as parameter to the SSE URL
+            const serverUrl = `${baseUrl}?zip_code=${encodeURIComponent(zipCode)}`;
+
+            updateStatus('🟡 Connecting to weather stream...', 'connecting');
+            log(`Attempting to connect to: ${baseUrl} with ZIP: ${zipCode}`, 'info');
 
             try {
                 eventSource = new EventSource(serverUrl);
@@ -261,7 +255,6 @@
 
                     document.getElementById('connectBtn').disabled = true;
                     document.getElementById('disconnectBtn').disabled = false;
-                    document.getElementById('callToolBtn').disabled = false;
 
                     const connectionInfo = document.getElementById('connectionInfo');
                     const connectionDetails = document.getElementById('connectionDetails');
@@ -270,8 +263,49 @@
                 };
 
                 eventSource.onmessage = function(event) {
-                    log(`📨 Received message: ${event.data}`, 'info');
-                    displayResponse(event.data, 'Server Message');
+                    try {
+                        const message = JSON.parse(event.data);
+
+                        // Skip heartbeat logging
+                        if (message.type === 'heartbeat') return;
+
+                        log(`📨 ${message.type}: ${message.message || 'Data received'}`, 'info');
+
+                        // Handle different message types
+                        switch (message.type) {
+                            case 'connection':
+                                displayResponse(JSON.stringify(message, null, 2), '🔗 Connection Status');
+                                break;
+                            case 'status':
+                                updateStatus(`🔄 ${message.message}`, 'loading');
+                                break;
+                            case 'location':
+                                displayResponse(JSON.stringify(message.data, null, 2), '📍 Location Info');
+                                break;
+                            case 'current_weather':
+                                displayResponse(JSON.stringify(message.data, null, 2), '🌡️ Current Weather');
+                                break;
+                            case 'forecast':
+                                displayResponse(JSON.stringify(message.data, null, 2), '📅 5-Day Forecast');
+                                break;
+                            case 'alerts':
+                                displayResponse(JSON.stringify(message.data, null, 2), `⚠️ Weather Alerts (${message.count})`);
+                                break;
+                            case 'complete':
+                                updateStatus(`✅ ${message.message}`, 'connected');
+                                log('🎉 All weather data loaded successfully!', 'success');
+                                break;
+                            case 'error':
+                                log(`❌ Error: ${message.message}`, 'error');
+                                displayResponse(JSON.stringify(message, null, 2), '❌ Error');
+                                break;
+                            default:
+                                displayResponse(JSON.stringify(message, null, 2), '📡 SSE Message');
+                        }
+                    } catch (e) {
+                        log(`❌ Failed to parse message: ${event.data}`, 'error');
+                        displayResponse(event.data, '📡 Raw SSE Message');
+                    }
                 };
 
                 eventSource.onerror = function(event) {
@@ -319,61 +353,10 @@
         function resetConnectionState() {
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('disconnectBtn').disabled = true;
-            document.getElementById('callToolBtn').disabled = true;
             document.getElementById('connectionInfo').style.display = 'none';
         }
 
-        function callWeatherTool() {
-            if (!isConnected) {
-                log('❌ Not connected to server', 'error');
-                return;
-            }
 
-            const toolName = document.getElementById('toolName').value;
-            const zipCode = document.getElementById('zipCode').value.trim();
-            const days = document.getElementById('days').value;
-
-            if (!zipCode) {
-                log('❌ Please enter a ZIP code or location', 'error');
-                return;
-            }
-
-            log(`🔧 Calling tool: ${toolName} with location: ${zipCode}`, 'info');
-
-            try {
-                // Prepare the MCP tool call
-                let toolArgs = {};
-
-                switch(toolName) {
-                    case 'get_weather':
-                        toolArgs = { zip_code: zipCode };
-                        break;
-                    case 'get_forecast':
-                        toolArgs = { zip_code: zipCode, days: parseInt(days) || 5 };
-                        break;
-                    case 'get_alerts':
-                        toolArgs = { zip_code: zipCode };
-                        break;
-                    case 'search_locations':
-                        toolArgs = { query: zipCode };
-                        break;
-                }
-
-                // FastMCP SSE is primarily for receiving messages, not sending tool calls
-                // For now, we'll use mock data to demonstrate the interface
-                log('🔄 Using mock data for demonstration (FastMCP tool calls require MCP client)', 'warning');
-                const mockData = generateMockResponse(toolName, zipCode, days);
-                displayResponse(JSON.stringify(mockData, null, 2), `${toolName} Mock Response`);
-
-                // Simulate receiving the response via SSE
-                if (isConnected) {
-                    log('📨 Simulating SSE response from server', 'info');
-                }
-
-            } catch (error) {
-                log(`❌ Error calling tool: ${error.message}`, 'error');
-            }
-        }
 
         function displayResponse(data, title) {
             const responseDisplay = document.getElementById('responseDisplay');
