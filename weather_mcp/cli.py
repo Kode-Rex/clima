@@ -53,9 +53,12 @@ def run(
     host: str = typer.Option("0.0.0.0", help="Server host address"),
     port: int = typer.Option(8000, help="Server port"),
 ):
-    """Run weather server with SSE endpoints"""
+    """Run weather server with SSE endpoints and health checks"""
+    import threading
+
     from fastmcp import FastMCP
 
+    from .health import create_health_app
     from .nws import NationalWeatherServiceClient
 
     async def run_server():
@@ -75,10 +78,25 @@ def run(
 
         return mcp_server
 
-    # Initialize and run server
+    def run_health_server():
+        """Run health check server on a separate port"""
+        import uvicorn
+
+        health_app = create_health_app()
+        logger.info(f"Starting health server on port {port + 1}")
+        uvicorn.run(health_app, host=host, port=port + 1, log_level="warning")
+
+    # Start health server in background thread
+    health_thread = threading.Thread(target=run_health_server, daemon=True)
+    health_thread.start()
+
+    # Initialize and run main MCP server
     mcp_server = asyncio.run(run_server())
 
     # Run FastMCP server with SSE transport
+    logger.info(f"Weather MCP Server: http://{host}:{port}")
+    logger.info(f"Health endpoints: http://{host}:{port + 1}/health")
+    logger.info(f"Metrics endpoint: http://{host}:{port + 1}/metrics")
     mcp_server.run(transport="sse", host=host, port=port)
 
 

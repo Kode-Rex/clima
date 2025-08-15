@@ -130,15 +130,15 @@ prometheus-open:
 
 health-check:
 	@echo "🏥 Checking service health..."
-	@curl -s http://localhost:8000/health | jq . || echo "Service not responding"
+	@curl -s http://localhost:8001/health | jq . || echo "Service not responding"
 
 metrics-check:
 	@echo "📊 Checking metrics..."
-	@curl -s http://localhost:8000/metrics | head -20
+	@curl -s http://localhost:8001/metrics | head -20
 
 observability-status:
 	@echo "📊 Observability Stack Status:"
-	@echo "Weather MCP: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:8000/health || echo "DOWN")"
+	@echo "Weather MCP: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:8001/health || echo "DOWN")"
 	@echo "Prometheus: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:9091/-/healthy || echo "DOWN")"
 	@echo "Grafana: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:3000/api/health || echo "DOWN")"
 	@echo "Loki: $$(curl -s -o /dev/null -w "%%{http_code}" http://localhost:3100/ready || echo "DOWN")"

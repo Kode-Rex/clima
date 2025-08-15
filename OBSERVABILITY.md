@@ -32,8 +32,8 @@ make observability-up
 - **Grafana Dashboard**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9091
 - **AlertManager**: http://localhost:9093
-- **Health Check**: http://localhost:8000/health
-- **Metrics Endpoint**: http://localhost:8000/metrics
+- **Health Check**: http://localhost:8001/health (runs on port +1)
+- **Metrics Endpoint**: http://localhost:8001/metrics (runs on port +1)
 
 ### 3. Quick Health Check
 
