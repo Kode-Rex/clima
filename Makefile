@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-unit test-integration coverage lint format format-check type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker run-docker-dev docker-logs docker-stop
+.PHONY: help install install-dev test test-unit test-integration coverage lint format format-check type-check clean dev-setup pre-commit run run-test docker-build docker-run run-docker-dev docker-logs docker-stop
 
 # Default target
 help:
@@ -18,7 +18,7 @@ help:
 	@echo "  run-test      Test the NWS API"
 	@echo "  run           Run weather API server"
 	@echo "  docker-build  Build Docker image"
-	@echo "  run-docker    Start Docker container in SSE mode"
+	@echo "  docker-run    Start Docker container with docker-compose"
 	@echo "  run-docker-dev Start Docker container in development mode"
 	@echo "  docker-logs   View Docker container logs"
 	@echo "  docker-stop   Stop Docker containers"
@@ -89,9 +89,6 @@ docker-build:
 	docker build -t clima-mcp .
 
 docker-run:
-	docker run -p 8000:8000 clima-mcp
-
-run-docker:
 	docker-compose up -d clima-mcp
 
 run-docker-dev:
