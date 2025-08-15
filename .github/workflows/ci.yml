@@ -34,21 +34,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
-    - name: Lint with ruff
+    - name: Run CI test suite (matches local 'make ci-test')
       run: |
-        ruff check weather_mcp/ tests/ main.py
-
-    - name: Format check with black
-      run: |
-        black --check weather_mcp/ tests/ main.py
-
-    - name: Type check with mypy
-      run: |
-        mypy weather_mcp/ main.py
-
-    - name: Test with pytest
-      run: |
-        pytest tests/ -v --cov=weather_mcp --cov-report=xml
+        make ci-test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

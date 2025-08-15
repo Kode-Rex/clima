@@ -12,13 +12,13 @@ A comprehensive Model Context Protocol (MCP) server that provides **completely f
 - **Real-time Updates**: SSE support for live weather data streams
 - **Weather Alerts**: Free real-time weather alerts and warnings
 - **Comprehensive Coverage**: Current weather, forecasts, and alerts
-- **Multiple Modes**: Run as MCP server or standalone SSE server
+- **FastMCP SSE Transport**: Single unified server with SSE transport for API integration
 
 ### Development Features
 - **Modern Python**: Built with Python 3.11+ and modern tooling
 - **Type Safety**: Full type hints with MyPy validation
 - **Code Quality**: Automated formatting (Black) and linting (Ruff)
-- **Comprehensive Testing**: 71+ tests with pytest and async support
+- **Comprehensive Testing**: 56+ tests with pytest and async support
 - **Docker Support**: Container-ready with docker-compose
 - **CI/CD Pipeline**: GitHub Actions for automated testing and quality checks
 - **Developer Experience**: Makefile with convenient development commands
@@ -48,14 +48,13 @@ A comprehensive Model Context Protocol (MCP) server that provides **completely f
 
 ### Alternative Installation Methods
 
-#### Using pip only:
-```bash
-pip install -r requirements.txt
-```
-
 #### Using Docker:
 ```bash
+# Quick start
 docker-compose up --build
+
+# Or using Makefile
+make run-docker
 ```
 
 #### Using Makefile (recommended for development):
@@ -69,7 +68,9 @@ make dev-setup
 ### Test the API (Recommended First Step)
 
 ```bash
-python main.py test
+clima-mcp test
+# or
+make run-test
 ```
 
 You should see:
@@ -81,77 +82,89 @@ You should see:
 🎉 All NWS API tests passed!
 ```
 
-### MCP Server Mode
+### FastMCP Server with SSE Transport
 
-Run the server in MCP mode for AI assistant integration:
-
-```bash
-python main.py mcp
-```
-
-### SSE Server Mode
-
-Run the server in HTTP mode with real-time weather streams:
+Run the unified FastMCP server with SSE transport for API integration:
 
 ```bash
-python main.py sse
+clima-mcp run
+# or
+make run
 ```
 
-Then visit: http://localhost:8000/examples/sse_client.html
+The server starts on `http://localhost:8000` with FastMCP SSE transport, providing 4 weather tools accessible via HTTP/SSE for integration with OpenAI and other AI services.
 
-## MCP Tools
+### Test the Server
 
-The server provides 8 comprehensive weather tools:
-
-### Location Tools
-
-- **`search_locations`**: Search for locations by name or ZIP code
-- **`get_location_weather`**: Get weather by searching for a location first
-
-### Weather Data Tools
-
-- **`get_current_weather`**: Get current weather conditions
-- **`get_5day_forecast`**: Get 5-day weather forecast
-- **`get_location_forecast`**: Get forecast by searching for a location first
-
-### Alert Tools
-
-- **`get_weather_alerts`**: Get active weather alerts (completely free!)
-- **`get_location_alerts`**: Get alerts by searching for a location first
-
-## SSE Endpoints
-
-Real-time weather streaming endpoints:
-
-### Weather Stream with Zip Codes
-
-```
-GET /weather/stream/{zip_code}?alert_types=all
-```
-
-**Example**:
+Open the interactive test client:
 ```bash
-# Stream weather for New York City
-curl -N http://localhost:8000/weather/stream/10001
-
-# Stream with specific alert types
-curl -N http://localhost:8000/weather/stream/90210?alert_types=severe,tornado
+open examples/sse_client.html
 ```
 
-**Features**:
-- Real-time weather updates every 2 minutes
-- Immediate weather data on connection
-- Free weather alerts from National Weather Service
-- Heartbeat every 30 seconds
-- Automatic zip code to coordinates conversion
+## Weather Tools
 
-### Server Status
+The FastMCP server provides 4 weather tools for API integration:
 
+### Core Tools
+
+- **`get_weather(zip_code)`**: Get current weather conditions for a ZIP code
+- **`get_forecast(zip_code, days=5)`**: Get weather forecast (1-7 days)
+- **`get_alerts(zip_code)`**: Get active weather alerts (completely free!)
+- **`search_locations(query)`**: Search for locations by name or ZIP code
+
+### API Integration
+
+Perfect for **OpenAI function calling** and other AI service integrations:
+
+```python
+# Example OpenAI function call
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a ZIP code",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "zip_code": {"type": "string", "description": "ZIP code (e.g., '10001')"}
+                },
+                "required": ["zip_code"]
+            }
+        }
+    }
+]
 ```
-GET /weather/status
+
+## FastMCP SSE Integration
+
+The server uses **FastMCP with SSE transport** for real-time API integration:
+
+### Connection
+```
+Server: http://localhost:8000
+Transport: SSE (Server-Sent Events)
+Protocol: FastMCP
 ```
 
-Returns server health and connection count.
+### Tool Calls
+Tools are accessible via FastMCP protocol over SSE. Perfect for:
+- **OpenAI function calling**
+- **Claude tool use**
+- **Custom AI integrations**
+- **Real-time weather APIs**
+
+### Interactive Testing
+Use the included test client:
+```bash
+open examples/sse_client.html
+```
+
+Features:
+- Test all 4 weather tools
+- Real-time responses
+- Mock data demonstrations
+- API integration examples
 
 ## Example Usage
 
@@ -201,13 +214,13 @@ The National Weather Service provides comprehensive coverage for:
 ## Architecture
 
 ```
-main.py (FastMCP server entry point)
+main.py (Legacy entry point - use CLI instead)
 ├── weather_mcp/
+│   ├── cli.py (Main CLI with FastMCP SSE server)
+│   ├── api_tools.py (FastMCP weather tools)
 │   ├── nws.py (National Weather Service client)
-│   ├── sse.py (Server-Sent Events)
 │   ├── config.py (Configuration management)
 │   ├── models.py (Pydantic data models)
-│   ├── mcp_tools.py (MCP tool handlers)
 │   ├── exceptions.py (Custom exceptions)
 │   └── services/ (Service layer architecture)
 │       ├── location_service.py
@@ -226,7 +239,7 @@ main.py (FastMCP server entry point)
 │   ├── test_weather_config.py
 │   └── test_weather_server.py
 ├── examples/
-│   └── sse_client.html (Live demo)
+│   └── sse_client.html (FastMCP test client)
 ├── .github/workflows/ (CI/CD pipelines)
 ├── Dockerfile & docker-compose.yml
 ├── pyproject.toml (Modern Python project config)
@@ -238,9 +251,10 @@ main.py (FastMCP server entry point)
 
 The application follows a clean service-oriented architecture:
 
+- **CLI**: Modern FastMCP server with SSE transport
+- **API Tools**: 4 weather functions for external integration
 - **Services**: Business logic for weather operations
 - **Models**: Pydantic data validation and serialization
-- **MCP Tools**: Protocol handlers that delegate to services
 - **Configuration**: Environment-based settings management
 - **Exception Handling**: Custom exceptions for better error management
 
@@ -324,8 +338,12 @@ make coverage          # Run tests with coverage report
 
 # Application
 make run-test          # Test the NWS API
-make run-mcp           # Run MCP server
-make run-sse           # Run SSE server
+make run               # Run FastMCP server with SSE transport
+
+# Docker
+make run-docker        # Run server in Docker container
+make docker-logs       # View Docker logs
+make docker-stop       # Stop Docker containers
 
 # Cleanup
 make clean             # Clean build artifacts
@@ -351,7 +369,7 @@ python run_tests.py --parallel 4
 - Integration tests for MCP and SSE servers
 - Configuration validation tests
 - Mock API responses for CI/CD
-- 71 comprehensive tests with modular structure
+- 56 comprehensive tests with modular structure
 
 ### Code Quality Tools
 
