@@ -253,6 +253,10 @@
                     document.getElementById('connectBtn').disabled = true;
                     document.getElementById('disconnectBtn').disabled = false;
 
+                    // Clear previous response data for fresh start
+                    const responseContent = document.getElementById('responseContent');
+                    responseContent.textContent = '';
+
                     const connectionInfo = document.getElementById('connectionInfo');
                     const connectionDetails = document.getElementById('connectionDetails');
                     connectionInfo.style.display = 'block';
@@ -362,10 +366,12 @@
             try {
                 // Try to parse and pretty-print JSON
                 const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-                responseContent.textContent = `=== ${title} ===\n${JSON.stringify(parsed, null, 2)}`;
+                const newContent = `=== ${title} ===\n${JSON.stringify(parsed, null, 2)}\n\n`;
+                responseContent.textContent += newContent;  // APPEND instead of overwrite
             } catch (e) {
                 // If not JSON, display as-is
-                responseContent.textContent = `=== ${title} ===\n${data}`;
+                const newContent = `=== ${title} ===\n${data}\n\n`;
+                responseContent.textContent += newContent;  // APPEND instead of overwrite
             }
 
             responseDisplay.style.display = 'block';
