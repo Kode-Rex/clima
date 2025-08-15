@@ -3,6 +3,7 @@ Raw weather service for handling detailed meteorological data operations
 """
 
 from typing import TYPE_CHECKING
+
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -11,14 +12,18 @@ if TYPE_CHECKING:
 
 class RawWeatherService:
     """Service for detailed raw meteorological data operations"""
-    
+
     def __init__(self, weather_client: "NationalWeatherServiceClient"):
         self.weather_client = weather_client
-    
-    async def get_detailed_grid_data(self, location_key: str, metric: bool = True) -> dict:
+
+    async def get_detailed_grid_data(
+        self, location_key: str, metric: bool = True
+    ) -> dict:
         """Get detailed grid forecast data with comprehensive weather parameters"""
         try:
-            grid_data = await self.weather_client.get_detailed_grid_data(location_key, metric)
+            grid_data = await self.weather_client.get_detailed_grid_data(
+                location_key, metric
+            )
             return {
                 "success": True,
                 "grid_data": [
@@ -48,11 +53,11 @@ class RawWeatherService:
                         "temperature_unit": d.temperature_unit,
                         "distance_unit": d.distance_unit,
                         "speed_unit": d.speed_unit,
-                        "precipitation_unit": d.precipitation_unit
+                        "precipitation_unit": d.precipitation_unit,
                     }
                     for d in grid_data
                 ],
-                "count": len(grid_data)
+                "count": len(grid_data),
             }
         except Exception as e:
             logger.error(f"Detailed grid data failed: {e}")

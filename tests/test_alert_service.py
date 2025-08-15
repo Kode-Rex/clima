@@ -28,7 +28,9 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_get_weather_alerts_error(self, mock_weather_client):
         """Test get_weather_alerts error handling"""
-        mock_weather_client.get_weather_alerts.side_effect = Exception("Alerts API Error")
+        mock_weather_client.get_weather_alerts.side_effect = Exception(
+            "Alerts API Error"
+        )
 
         alert_service = AlertService(mock_weather_client)
         result = await alert_service.get_weather_alerts("40.7128,-74.0060")

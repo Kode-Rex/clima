@@ -223,7 +223,7 @@
 <body>
     <div class="container">
         <h1>🌤️ Clima Demo</h1>
-        
+
         <div class="controls">
             <div>
                 <label for="serverUrl">Server URL:</label>
@@ -239,24 +239,24 @@
                 <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
             </div>
         </div>
-        
+
         <div id="status" class="status-connecting">Status: Not connected</div>
-        
+
         <div id="weather-container">
             <h2>Current Weather</h2>
             <div id="weather-data">No data yet</div>
         </div>
-        
+
         <div id="alerts-container">
             <h2>Weather Alerts</h2>
             <div id="alerts-data">No active alerts</div>
         </div>
-        
+
         <div id="forecast-container">
             <h2>7-Day Forecast</h2>
             <div id="forecast-data">No forecast data yet</div>
         </div>
-        
+
         <div id="log-container">
             <h2>Event Log</h2>
             <div id="log"></div>
@@ -266,23 +266,23 @@
     <script>
         let eventSource = null;
         let isConnected = false;
-        
+
         function log(message) {
             const logElement = document.getElementById('log');
             const timestamp = new Date().toLocaleTimeString();
             logElement.innerHTML += `[${timestamp}] ${message}<br>`;
             logElement.scrollTop = logElement.scrollHeight;
         }
-        
 
-        
+
+
         function updateStatus(status) {
             const statusElement = document.getElementById('status');
             statusElement.textContent = `Status: ${status}`;
-            
+
             // Remove all status classes
             statusElement.className = '';
-            
+
             // Add appropriate class based on status
             if (status.includes('Connected')) {
                 statusElement.classList.add('status-connected');
@@ -293,15 +293,15 @@
             } else if (status.includes('Disconnected')) {
                 statusElement.classList.add('status-disconnected');
             }
-            
+
             // Update button states
             updateButtonStates();
         }
-        
+
         function updateButtonStates() {
             const connectButton = document.getElementById('connectBtn');
             const disconnectButton = document.getElementById('disconnectBtn');
-            
+
             if (isConnected) {
                 connectButton.disabled = true;
                 disconnectButton.disabled = false;
@@ -310,7 +310,7 @@
                 disconnectButton.disabled = true;
             }
         }
-        
+
         function updateWeatherData(data) {
             const weatherElement = document.getElementById('weather-data');
             if (data.weather) {
@@ -337,7 +337,7 @@
                 `;
             }
         }
-        
+
         function updateAlerts(data) {
             const alertsElement = document.getElementById('alerts-data');
             if (data.alerts && data.alerts.length > 0) {
@@ -345,7 +345,7 @@
                 data.alerts.forEach(alert => {
                     const startTime = new Date(alert.start_time).toLocaleString();
                     const endTime = alert.end_time ? new Date(alert.end_time).toLocaleString() : 'Until further notice';
-                    
+
                     alertsHtml += `
                         <div class="alert-item ${alert.severity.toLowerCase()}">
                             <h4>${alert.title}</h4>
@@ -362,7 +362,7 @@
                 alertsElement.innerHTML = '<p>No active alerts</p>';
             }
         }
-        
+
         function updateForecastData(data) {
             const forecastElement = document.getElementById('forecast-data');
             if (data.forecasts && data.forecasts.length > 0) {
@@ -371,7 +371,7 @@
                     const date = new Date(forecast.date);
                     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                     const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    
+
                     forecastHtml += `
                         <div class="forecast-day">
                             <h4>${dayName}<br>${monthDay}</h4>
@@ -391,42 +391,42 @@
                 forecastElement.innerHTML = '<p>No forecast data available</p>';
             }
         }
-        
 
-        
+
+
         function connect() {
             if (isConnected) {
                 log('Already connected');
                 return;
             }
-            
+
             const serverUrl = document.getElementById('serverUrl').value.trim();
             const zipCode = document.getElementById('zipCode').value;
             const alertTypes = "all";
-            
+
             if (!serverUrl) {
                 log('Please enter a server URL');
                 return;
             }
-            
+
             if (!zipCode) {
                 log('Please enter a zip code');
                 return;
             }
-            
+
             const url = `${serverUrl}/weather/stream/${zipCode}?alert_types=${encodeURIComponent(alertTypes)}`;
-            
+
             log(`Connecting to ${url}`);
             updateStatus('Connecting...');
-            
+
             eventSource = new EventSource(url);
-            
+
             eventSource.onopen = function() {
                 isConnected = true;
                 updateStatus('Connected (Active)');
                 log('Connected to weather stream');
             };
-            
+
             eventSource.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -435,7 +435,7 @@
                     log(`Error parsing message: ${e.message}`);
                 }
             };
-            
+
             eventSource.addEventListener('weather_update', function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -445,7 +445,7 @@
                     log(`Error parsing weather update: ${e.message}`);
                 }
             });
-            
+
             eventSource.addEventListener('weather_alert', function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -455,7 +455,7 @@
                     log(`Error parsing weather alert: ${e.message}`);
                 }
             });
-            
+
             eventSource.addEventListener('forecast_update', function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -465,14 +465,14 @@
                     log(`Error parsing forecast update: ${e.message}`);
                 }
             });
-            
+
             eventSource.addEventListener('alert_status', function(event) {
                 try {
                     const data = JSON.parse(event.data);
                     log(`Alert status: ${data.message}`);
-                    
+
                     const alertsElement = document.getElementById('alerts-data');
-                    
+
                     if (data.status === 'unavailable') {
                         alertsElement.innerHTML = `
                             <div class="alert-unavailable">
@@ -503,7 +503,7 @@
                     log(`Error parsing alert status: ${e.message}`);
                 }
             });
-            
+
             eventSource.addEventListener('heartbeat', function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -513,7 +513,7 @@
                     log(`Error parsing heartbeat: ${e.message}`);
                 }
             });
-            
+
             eventSource.addEventListener('error', function(event) {
                 try {
                     const data = JSON.parse(event.data);
@@ -522,7 +522,7 @@
                     log(`Error event: ${JSON.stringify(event)}`);
                 }
             });
-            
+
             eventSource.onerror = function(event) {
                 log(`Connection error: ${JSON.stringify(event)}`);
                 updateStatus('Connection Error');
@@ -533,7 +533,7 @@
                 }
             };
         }
-        
+
         function disconnect() {
             if (eventSource) {
                 eventSource.close();
@@ -541,7 +541,7 @@
                 isConnected = false;
                 updateStatus('Disconnected');
                 log('Disconnected from weather stream');
-                
+
                 // Clear all weather data to prevent stale info on reconnect
                 document.getElementById('weather-data').innerHTML = 'No data yet';
                 document.getElementById('alerts-data').innerHTML = 'No active alerts';
@@ -549,7 +549,7 @@
                 log('Cleared all weather data');
             }
         }
-        
+
         // Auto-connect on page load for demo
         window.addEventListener('load', function() {
             updateStatus('Not connected');

@@ -2,8 +2,8 @@
 Shared pytest fixtures and mocks for weather MCP server tests
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,11 +11,11 @@ import pytest
 from weather_mcp.config import Config
 from weather_mcp.nws import (
     CurrentWeather,
+    DetailedGridData,
+    HourlyForecast,
     NationalWeatherServiceClient,
     WeatherAlert,
     WeatherForecast,
-    HourlyForecast,
-    DetailedGridData,
 )
 
 
@@ -319,7 +319,7 @@ def sample_7day_forecast():
     """Sample 7-day forecast with WeatherForecast objects"""
     return [
         WeatherForecast(
-            date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=timezone.utc),
+            date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=UTC),
             min_temperature=-2.0,
             max_temperature=5.0,
             temperature_unit="C",
@@ -331,7 +331,7 @@ def sample_7day_forecast():
             night_precipitation_probability=0,
         ),
         WeatherForecast(
-            date=datetime(2024, 1, 16, 7, 0, 0, tzinfo=timezone.utc),
+            date=datetime(2024, 1, 16, 7, 0, 0, tzinfo=UTC),
             min_temperature=-3.0,
             max_temperature=4.0,
             temperature_unit="C",
@@ -343,7 +343,7 @@ def sample_7day_forecast():
             night_precipitation_probability=0,
         ),
         WeatherForecast(
-            date=datetime(2024, 1, 17, 7, 0, 0, tzinfo=timezone.utc),
+            date=datetime(2024, 1, 17, 7, 0, 0, tzinfo=UTC),
             min_temperature=-1.0,
             max_temperature=6.0,
             temperature_unit="C",
@@ -362,7 +362,7 @@ def sample_hourly_forecast_objects():
     """Sample hourly forecast with HourlyForecast objects"""
     return [
         HourlyForecast(
-            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=UTC),
             temperature=6.0,
             temperature_unit="C",
             humidity=60,
@@ -382,7 +382,7 @@ def sample_hourly_forecast_objects():
             is_daytime=True,
         ),
         HourlyForecast(
-            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=UTC),
             temperature=5.5,
             temperature_unit="C",
             humidity=62,
@@ -409,7 +409,7 @@ def sample_detailed_grid_data():
     """Sample detailed grid data with DetailedGridData objects"""
     return [
         DetailedGridData(
-            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 15, 13, 0, 0, tzinfo=UTC),
             temperature=6.0,
             dewpoint=2.0,
             max_temperature=7.0,
@@ -447,7 +447,7 @@ def sample_detailed_grid_data():
             precipitation_unit="in",
         ),
         DetailedGridData(
-            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 15, 14, 0, 0, tzinfo=UTC),
             temperature=5.5,
             dewpoint=1.5,
             max_temperature=6.5,
@@ -526,14 +526,14 @@ def mock_weather_client(
         weather_text="Partly Cloudy",
         weather_icon=3,
         precipitation=0.0,
-        local_time=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
+        local_time=datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC),
     )
     client.get_current_weather = AsyncMock(return_value=mock_current_weather)
 
     # Mock forecast with proper WeatherForecast objects
     mock_forecast = [
         WeatherForecast(
-            date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=timezone.utc),
+            date=datetime(2024, 1, 15, 7, 0, 0, tzinfo=UTC),
             min_temperature=-2.0,
             max_temperature=5.0,
             temperature_unit="C",
@@ -561,8 +561,8 @@ def mock_weather_client(
             description="Heavy snow expected. Total snow accumulations of 6 to 10 inches possible.",
             severity="Moderate",
             category="meteorological",
-            start_time=datetime(2024, 1, 16, 0, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2024, 1, 17, 12, 0, 0, tzinfo=timezone.utc),
+            start_time=datetime(2024, 1, 16, 0, 0, 0, tzinfo=UTC),
+            end_time=datetime(2024, 1, 17, 12, 0, 0, tzinfo=UTC),
             areas=["New York County"],
         )
     ]

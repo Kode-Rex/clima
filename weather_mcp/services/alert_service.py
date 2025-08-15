@@ -3,6 +3,7 @@ Alert service for handling weather alert operations
 """
 
 from typing import TYPE_CHECKING
+
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -11,10 +12,10 @@ if TYPE_CHECKING:
 
 class AlertService:
     """Service for weather alert operations"""
-    
+
     def __init__(self, weather_client: "NationalWeatherServiceClient"):
         self.weather_client = weather_client
-    
+
     async def get_weather_alerts(self, location_key: str) -> dict:
         """Get weather alerts for a location"""
         try:
@@ -29,12 +30,14 @@ class AlertService:
                         "severity": alert.severity,
                         "category": alert.category,
                         "start_time": alert.start_time.isoformat(),
-                        "end_time": alert.end_time.isoformat() if alert.end_time else None,
-                        "areas": alert.areas
+                        "end_time": (
+                            alert.end_time.isoformat() if alert.end_time else None
+                        ),
+                        "areas": alert.areas,
                     }
                     for alert in alerts
                 ],
-                "count": len(alerts)
+                "count": len(alerts),
             }
         except Exception as e:
             logger.error(f"Weather alerts failed: {e}")

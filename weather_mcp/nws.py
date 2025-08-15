@@ -2,10 +2,9 @@
 National Weather Service API client - completely free alternative to AccuWeather
 """
 
-import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -98,7 +97,7 @@ class DetailedGridData:
     wind_direction: float
     wind_speed: float
     wind_gust: float
-    weather_conditions: List[str]
+    weather_conditions: list[str]
     probability_of_precipitation: int
     quantitative_precipitation: float
     ice_accumulation: float
@@ -133,8 +132,8 @@ class WeatherAlert:
     severity: str
     category: str
     start_time: datetime
-    end_time: Optional[datetime]
-    areas: List[str]
+    end_time: datetime | None
+    areas: list[str]
 
 
 class NationalWeatherServiceClient:
@@ -162,7 +161,7 @@ class NationalWeatherServiceClient:
         """Close the HTTP client"""
         await self.client.aclose()
 
-    async def _geocode_zip(self, zip_code: str) -> Tuple[float, float, str]:
+    async def _geocode_zip(self, zip_code: str) -> tuple[float, float, str]:
         """Convert zip code to coordinates using OpenStreetMap Nominatim"""
         try:
             # Use Nominatim to get coordinates for US zip code
@@ -198,7 +197,7 @@ class NationalWeatherServiceClient:
             logger.error(f"Error geocoding zip code {zip_code}: {e}")
             raise
 
-    async def _get_grid_point(self, lat: float, lon: float) -> Dict[str, Any]:
+    async def _get_grid_point(self, lat: float, lon: float) -> dict[str, Any]:
         """Get NWS grid point information for coordinates"""
         cache_key = f"{lat:.4f},{lon:.4f}"
         if cache_key in self._grid_cache:
@@ -225,7 +224,7 @@ class NationalWeatherServiceClient:
 
     async def search_locations(
         self, query: str, language: str = "en-us"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for locations by name or zip code"""
         try:
             # Check if query looks like a zip code
@@ -392,7 +391,7 @@ class NationalWeatherServiceClient:
 
     async def get_daily_forecast(
         self, location_key: str, days: int = 5, metric: bool = True
-    ) -> List[WeatherForecast]:
+    ) -> list[WeatherForecast]:
         """Get daily weather forecast for specified number of days (up to 7)"""
         try:
             # Parse location key as lat,lon
@@ -436,8 +435,8 @@ class NationalWeatherServiceClient:
 
             # Create forecast objects
             for date, day_data in sorted(day_periods.items()):
-                day_period: Optional[Dict[str, Any]] = day_data.get("day")
-                night_period: Optional[Dict[str, Any]] = day_data.get("night")
+                day_period: dict[str, Any] | None = day_data.get("day")
+                night_period: dict[str, Any] | None = day_data.get("night")
 
                 # Skip if we don't have at least day data
                 if not day_period:
@@ -510,19 +509,19 @@ class NationalWeatherServiceClient:
 
     async def get_5day_forecast(
         self, location_key: str, metric: bool = True
-    ) -> List[WeatherForecast]:
+    ) -> list[WeatherForecast]:
         """Get 5-day weather forecast (backward compatibility)"""
         return await self.get_daily_forecast(location_key, days=5, metric=metric)
 
     async def get_7day_forecast(
         self, location_key: str, metric: bool = True
-    ) -> List[WeatherForecast]:
+    ) -> list[WeatherForecast]:
         """Get 7-day weather forecast"""
         return await self.get_daily_forecast(location_key, days=7, metric=metric)
 
     async def get_hourly_forecast(
         self, location_key: str, hours: int = 168, metric: bool = True
-    ) -> List[HourlyForecast]:
+    ) -> list[HourlyForecast]:
         """Get hourly weather forecast for specified number of hours (up to 168 hours/7 days)"""
         try:
             # Parse location key as lat,lon
@@ -555,7 +554,7 @@ class NationalWeatherServiceClient:
                 timestamp = datetime.fromisoformat(
                     period["startTime"].replace("Z", "+00:00")
                 )
-                
+
                 # Get temperature
                 temp = period.get("temperature", 0)
                 if metric:
@@ -566,11 +565,13 @@ class NationalWeatherServiceClient:
                 wind_speed = period.get("windSpeed", "0 mph")
                 wind_direction = period.get("windDirection", "Unknown")
                 wind_gust_str = period.get("windGust", "0 mph")
-                
+
                 # Parse wind speed and gusts
                 try:
                     wind_speed_val = float(wind_speed.split()[0]) if wind_speed else 0
-                    wind_gust_val = float(wind_gust_str.split()[0]) if wind_gust_str else 0
+                    wind_gust_val = (
+                        float(wind_gust_str.split()[0]) if wind_gust_str else 0
+                    )
                 except (ValueError, IndexError):
                     wind_speed_val = 0
                     wind_gust_val = 0
@@ -581,11 +582,13 @@ class NationalWeatherServiceClient:
                     wind_gust_val = wind_gust_val * 1.60934
 
                 # Get precipitation probability
-                precip_prob = period.get("probabilityOfPrecipitation", {}).get("value", 0) or 0
-                
+                precip_prob = (
+                    period.get("probabilityOfPrecipitation", {}).get("value", 0) or 0
+                )
+
                 # Get weather description
                 weather_text = period.get("shortForecast", "")
-                
+
                 # Calculate dewpoint (approximation)
                 dewpoint = temp - ((100 - humidity) / 5) if humidity > 0 else temp
 
@@ -619,7 +622,7 @@ class NationalWeatherServiceClient:
 
     async def get_detailed_grid_data(
         self, location_key: str, metric: bool = True
-    ) -> List[DetailedGridData]:
+    ) -> list[DetailedGridData]:
         """Get detailed grid forecast data with comprehensive weather parameters"""
         try:
             # Parse location key as lat,lon
@@ -654,24 +657,32 @@ class NationalWeatherServiceClient:
             wind_direction_data = properties.get("windDirection", {}).get("values", [])
             wind_gust_data = properties.get("windGust", {}).get("values", [])
             sky_cover_data = properties.get("skyCover", {}).get("values", [])
-            precip_prob_data = properties.get("probabilityOfPrecipitation", {}).get("values", [])
-            precip_amount_data = properties.get("quantitativePrecipitation", {}).get("values", [])
+            precip_prob_data = properties.get("probabilityOfPrecipitation", {}).get(
+                "values", []
+            )
+            precip_amount_data = properties.get("quantitativePrecipitation", {}).get(
+                "values", []
+            )
             visibility_data = properties.get("visibility", {}).get("values", [])
             pressure_data = properties.get("pressure", {}).get("values", [])
-            apparent_temp_data = properties.get("apparentTemperature", {}).get("values", [])
+            apparent_temp_data = properties.get("apparentTemperature", {}).get(
+                "values", []
+            )
 
             # Create a dictionary to merge all data by time
-            time_data = {}
-            
+            time_data: dict[datetime, dict[str, Any]] = {}
+
             # Process temperature data
             for item in temperature_data:
                 valid_time = item.get("validTime", "")
                 if "/" in valid_time:
                     start_time = valid_time.split("/")[0]
-                    timestamp = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                    timestamp = datetime.fromisoformat(
+                        start_time.replace("Z", "+00:00")
+                    )
                     temp_c = item.get("value")
                     if temp_c is not None:
-                        temp = (temp_c * 9/5) + 32 if not metric else temp_c
+                        temp = (temp_c * 9 / 5) + 32 if not metric else temp_c
                         time_data[timestamp] = time_data.get(timestamp, {})
                         time_data[timestamp]["temperature"] = temp
 
@@ -693,7 +704,9 @@ class NationalWeatherServiceClient:
                     valid_time = item.get("validTime", "")
                     if "/" in valid_time:
                         start_time = valid_time.split("/")[0]
-                        timestamp = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                        timestamp = datetime.fromisoformat(
+                            start_time.replace("Z", "+00:00")
+                        )
                         value = item.get("value")
                         if value is not None:
                             time_data[timestamp] = time_data.get(timestamp, {})
@@ -703,12 +716,12 @@ class NationalWeatherServiceClient:
             detailed_forecasts = []
             for timestamp in sorted(time_data.keys()):
                 data = time_data[timestamp]
-                
+
                 temp = data.get("temperature", 0)
                 dewpoint = data.get("dewpoint", 0)
                 if not metric and dewpoint != 0:
-                    dewpoint = (dewpoint * 9/5) + 32
-                
+                    dewpoint = (dewpoint * 9 / 5) + 32
+
                 humidity = data.get("humidity", 0)
                 wind_speed = data.get("wind_speed", 0)
                 wind_direction = data.get("wind_direction", 0)
@@ -719,7 +732,7 @@ class NationalWeatherServiceClient:
                 visibility = data.get("visibility", 0)
                 pressure = data.get("pressure", 0)
                 apparent_temp = data.get("apparent_temp", temp)
-                
+
                 # Convert units if needed
                 if metric:
                     if wind_speed > 0:
@@ -740,7 +753,7 @@ class NationalWeatherServiceClient:
                     if precip_amount > 0:
                         precip_amount = precip_amount * 39.3701  # meters to inches
                     if not metric and apparent_temp != temp:
-                        apparent_temp = (apparent_temp * 9/5) + 32
+                        apparent_temp = (apparent_temp * 9 / 5) + 32
 
                 detailed_forecast = DetailedGridData(
                     timestamp=timestamp,
@@ -788,7 +801,7 @@ class NationalWeatherServiceClient:
             logger.error(f"Error getting detailed grid data for {location_key}: {e}")
             raise
 
-    async def get_weather_alerts(self, location_key: str) -> List[WeatherAlert]:
+    async def get_weather_alerts(self, location_key: str) -> list[WeatherAlert]:
         """Get weather alerts for location"""
         try:
             # Parse location key as lat,lon

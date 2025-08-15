@@ -5,15 +5,12 @@ Weather SSE (Server-Sent Events) implementation using National Weather Service A
 import asyncio
 import json
 import time
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from loguru import logger
 
 from .config import Config
@@ -30,7 +27,7 @@ class SSEConnection:
     location_name: str
     created_at: datetime
     last_heartbeat: datetime
-    alert_types: Set[str]
+    alert_types: set[str]
 
     def is_expired(self, timeout_seconds: int = 300) -> bool:
         """Check if connection has expired"""
@@ -43,16 +40,16 @@ class WeatherSSEManager:
     def __init__(self, config: Config, weather_client: NationalWeatherServiceClient):
         self.config = config
         self.weather_client = weather_client
-        self.connections: Dict[str, SSEConnection] = {}
-        self.location_subscribers: Dict[str, Set[str]] = (
-            {}
-        )  # location_key -> connection_ids
-        self.alert_cache: Dict[str, List[WeatherAlert]] = {}  # location_key -> alerts
+        self.connections: dict[str, SSEConnection] = {}
+        self.location_subscribers: dict[
+            str, set[str]
+        ] = {}  # location_key -> connection_ids
+        self.alert_cache: dict[str, list[WeatherAlert]] = {}  # location_key -> alerts
         self.running = False
 
         # Background tasks
-        self._heartbeat_task: Optional[asyncio.Task] = None
-        self._alert_monitor_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: asyncio.Task | None = None
+        self._alert_monitor_task: asyncio.Task | None = None
 
         logger.info("Weather SSE Manager initialized")
 
@@ -111,7 +108,7 @@ class WeatherSSEManager:
         location_key: str,
         zip_code: str = "",
         location_name: str = "",
-        alert_types: Optional[Set[str]] = None,
+        alert_types: set[str] | None = None,
     ) -> SSEConnection:
         """Add a new SSE connection"""
         if alert_types is None:
@@ -169,7 +166,6 @@ class WeatherSSEManager:
             try:
                 await asyncio.sleep(self.config.sse_heartbeat_interval)
 
-                current_time = datetime.now()
                 expired_connections = []
 
                 for connection_id, connection in self.connections.items():
@@ -235,7 +231,7 @@ class WeatherSSEManager:
             except Exception as e:
                 logger.error(f"Error in alert monitor loop: {e}")
 
-    async def _broadcast_alerts(self, location_key: str, alerts: List[WeatherAlert]):
+    async def _broadcast_alerts(self, location_key: str, alerts: list[WeatherAlert]):
         """Broadcast weather alerts to subscribers"""
         if location_key not in self.location_subscribers:
             return
@@ -277,6 +273,7 @@ class WeatherSSEManager:
                         for alert in filtered_alerts
                     ],
                 }
+                # TODO: Send alert_data to subscribed connections
 
                 # In a real implementation, we'd send this to the specific connection
                 logger.info(
@@ -328,7 +325,9 @@ class WeatherSSEManager:
 
                 # Send 7-day forecast immediately
                 try:
-                    forecasts = await self.weather_client.get_7day_forecast(location_key)
+                    forecasts = await self.weather_client.get_7day_forecast(
+                        location_key
+                    )
                     if forecasts:
                         forecast_data = {
                             "type": "forecast_update",
@@ -354,10 +353,14 @@ class WeatherSSEManager:
                         }
 
                         yield f"event: forecast_update\ndata: {json.dumps(forecast_data)}\n\n"
-                        logger.info(f"Sent 7-day forecast to connection {connection_id}")
+                        logger.info(
+                            f"Sent 7-day forecast to connection {connection_id}"
+                        )
 
                 except Exception as e:
-                    logger.warning(f"Could not get 7-day forecast for {location_key}: {e}")
+                    logger.warning(
+                        f"Could not get 7-day forecast for {location_key}: {e}"
+                    )
 
                 # Check for current alerts immediately
                 try:
@@ -433,7 +436,7 @@ class WeatherSSEManager:
                         "zip_code": connection.zip_code,
                         "location_name": connection.location_name,
                         "timestamp": datetime.now().isoformat(),
-                        "message": f"No weather alerts available for this location",
+                        "message": "No weather alerts available for this location",
                         "status": "info",
                     }
 
@@ -645,9 +648,10 @@ class WeatherSSEApp:
                 connection_id = f"{client_host}_{int(time.time() * 1000)}"
 
                 # Convert zip code to location key
-                location_key, location_name = (
-                    await self.sse_manager._zip_to_location_key(zip_code)
-                )
+                (
+                    location_key,
+                    location_name,
+                ) = await self.sse_manager._zip_to_location_key(zip_code)
 
                 # Parse alert types
                 alert_type_set = (
@@ -655,7 +659,7 @@ class WeatherSSEApp:
                 )
 
                 # Add connection with location info
-                connection = self.sse_manager.add_connection(
+                self.sse_manager.add_connection(
                     connection_id=connection_id,
                     location_key=location_key,
                     zip_code=zip_code,
@@ -676,10 +680,10 @@ class WeatherSSEApp:
                 logger.error(f"Invalid zip code {zip_code}: {e}")
                 raise HTTPException(
                     status_code=400, detail=f"Invalid zip code: {zip_code}"
-                )
+                ) from e
             except Exception as e:
                 logger.error(f"Error creating weather stream for zip {zip_code}: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
+                raise HTTPException(status_code=500, detail=str(e)) from e
 
         @self.app.get("/weather/status")
         async def status():
@@ -704,12 +708,12 @@ class WeatherSSEApp:
     def _setup_static_files(self):
         """Setup static file serving for the HTML test client"""
         import os
-        
+
         # Get the project root directory (parent of weather_mcp)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_dir)
         examples_dir = os.path.join(project_root, "examples")
-        
+
         @self.app.get("/")
         async def serve_test_client():
             """Serve the SSE test client HTML page"""
@@ -718,10 +722,10 @@ class WeatherSSEApp:
                 return FileResponse(html_file, media_type="text/html")
             else:
                 return JSONResponse(
-                    {"error": "Test client not found", "path": html_file}, 
-                    status_code=404
+                    {"error": "Test client not found", "path": html_file},
+                    status_code=404,
                 )
-        
+
         @self.app.get("/test")
         async def serve_test_client_alt():
             """Alternative route for the SSE test client"""
@@ -730,8 +734,8 @@ class WeatherSSEApp:
                 return FileResponse(html_file, media_type="text/html")
             else:
                 return JSONResponse(
-                    {"error": "Test client not found", "path": html_file}, 
-                    status_code=404
+                    {"error": "Test client not found", "path": html_file},
+                    status_code=404,
                 )
 
     def get_app(self) -> FastAPI:

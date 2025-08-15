@@ -43,7 +43,9 @@ class TestWeatherService:
     @pytest.mark.asyncio
     async def test_get_current_weather_error(self, mock_weather_client):
         """Test get_current_weather error handling"""
-        mock_weather_client.get_current_weather.side_effect = Exception("Weather API Error")
+        mock_weather_client.get_current_weather.side_effect = Exception(
+            "Weather API Error"
+        )
 
         weather_service = WeatherService(mock_weather_client)
         result = await weather_service.get_current_weather("40.7128,-74.0060")

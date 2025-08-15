@@ -2,6 +2,7 @@
 Tests for MCP and SSE server functionality
 """
 
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -30,9 +31,7 @@ class TestMCPServer:
     @pytest.mark.asyncio
     async def test_create_server_without_config(self):
         """Test server creation without provided config (uses default)"""
-        with patch("main.NationalWeatherServiceClient") as mock_client_class:
-            mock_config = MagicMock()
-
+        with patch("main.NationalWeatherServiceClient"):
             from main import mcp
 
             assert mcp is not None
@@ -223,7 +222,7 @@ class TestSSEServer:
             description="Test alert description",
             severity="Moderate",
             category="meteorological",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
             end_time=None,
             areas=["Test Area"],
         )

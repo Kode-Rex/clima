@@ -38,7 +38,9 @@ class TestForecastService:
     @pytest.mark.asyncio
     async def test_get_5day_forecast_error(self, mock_weather_client):
         """Test get_5day_forecast error handling"""
-        mock_weather_client.get_5day_forecast.side_effect = Exception("Forecast API Error")
+        mock_weather_client.get_5day_forecast.side_effect = Exception(
+            "Forecast API Error"
+        )
 
         forecast_service = ForecastService(mock_weather_client)
         result = await forecast_service.get_5day_forecast("40.7128,-74.0060")
@@ -51,7 +53,9 @@ class TestForecastService:
     async def test_get_extended_forecast_success(self, mock_weather_client):
         """Test successful extended forecast retrieval"""
         forecast_service = ForecastService(mock_weather_client)
-        result = await forecast_service.get_extended_forecast("40.7128,-74.0060", 7, True)
+        result = await forecast_service.get_extended_forecast(
+            "40.7128,-74.0060", 7, True
+        )
 
         assert result["success"] is True
         assert result["days"] == 7
@@ -71,7 +75,9 @@ class TestForecastService:
     @pytest.mark.asyncio
     async def test_get_extended_forecast_error(self, mock_weather_client):
         """Test get_extended_forecast error handling"""
-        mock_weather_client.get_daily_forecast.side_effect = Exception("Extended Forecast API Error")
+        mock_weather_client.get_daily_forecast.side_effect = Exception(
+            "Extended Forecast API Error"
+        )
 
         forecast_service = ForecastService(mock_weather_client)
         result = await forecast_service.get_extended_forecast("40.7128,-74.0060")
@@ -84,7 +90,9 @@ class TestForecastService:
     async def test_get_hourly_forecast_success(self, mock_weather_client):
         """Test successful hourly forecast retrieval"""
         forecast_service = ForecastService(mock_weather_client)
-        result = await forecast_service.get_hourly_forecast("40.7128,-74.0060", 24, True)
+        result = await forecast_service.get_hourly_forecast(
+            "40.7128,-74.0060", 24, True
+        )
 
         assert result["success"] is True
         assert result["hours"] == 24
@@ -104,7 +112,9 @@ class TestForecastService:
     @pytest.mark.asyncio
     async def test_get_hourly_forecast_error(self, mock_weather_client):
         """Test get_hourly_forecast error handling"""
-        mock_weather_client.get_hourly_forecast.side_effect = Exception("Hourly Forecast API Error")
+        mock_weather_client.get_hourly_forecast.side_effect = Exception(
+            "Hourly Forecast API Error"
+        )
 
         forecast_service = ForecastService(mock_weather_client)
         result = await forecast_service.get_hourly_forecast("40.7128,-74.0060")

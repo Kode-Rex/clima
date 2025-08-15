@@ -2,9 +2,6 @@
 Configuration management for Weather MCP Server
 """
 
-import os
-from typing import Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,7 +22,7 @@ class Config(BaseSettings):
     log_level: str = Field("INFO", description="Logging level")
 
     # AccuWeather API settings (now optional)
-    accuweather_api_key: Optional[str] = Field(
+    accuweather_api_key: str | None = Field(
         None, description="AccuWeather API key (optional)"
     )
     accuweather_base_url: str = Field(
@@ -54,7 +51,7 @@ class Config(BaseSettings):
 
 def get_config() -> Config:
     """Get configuration instance"""
-    return Config()  # type: ignore[call-arg]
+    return Config()
 
 
 def setup_logging(config: Config):
